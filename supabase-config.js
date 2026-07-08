@@ -1,4 +1,4 @@
 window.supabaseConfig = {
-  url: "DEINE_SUPABASE_URL",
-  anonKey: "DEIN_ANON_KEY"
+  url: "NEXT_PUBLIC_SUPABASE_URL=https://objzavshpyhndvbdgrzk.supabase.co",
+  anonKey: "sb_publishable_aWW6Ggfz7lldz_UCCKpiwg_QQgbqmcV"
 };
