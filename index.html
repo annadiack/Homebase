@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Unser Zuhause</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #F1EFE8;
+  color: #2C2C2A;
+  padding: 1rem;
+  -webkit-font-smoothing: antialiased;
+}
+input, button {
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 0.5px solid #D3D1C7;
+  padding: 8px 10px;
+  background: white;
+  color: #2C2C2A;
+}
+input { height: 36px; width: 100%; }
+input[type="checkbox"] { width: 18px; height: 18px; }
+button { height: 36px; cursor: pointer; }
+button:active { transform: scale(0.98); }
+.card { background: white; border: 0.5px solid #D3D1C7; border-radius: 12px; padding: 0.85rem 1rem; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0.5px solid #D3D1C7; border-radius: 8px; }
+.muted { color: #5F5E5A; }
+.tiny { color: #888780; font-size: 11px; }
+.empty { font-size: 13px; color: #888780; text-align: center; padding: 1rem 0; }
+.view { display: none; }
+.view.active { display: block; }
+.tab-btn { padding: 7px 2px; font-size: 11px; background: white; }
+.tab-btn.active { background: #E1E1DA; border-color: #B4B2A9; }
+.tab-btn i { font-size: 15px; display: block; margin: 0 auto 2px; }
+</style>
+</head>
+<body>
+
+<div style="max-width:420px; margin:0 auto;">
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <div>
+      <p style="font-size:18px; font-weight:600; margin:0;">Unser Zuhause</p>
+      <p id="today" class="tiny" style="margin:2px 0 0;"></p>
+    </div>
+    <div id="sync-status" class="tiny"></div>
+  </div>
+
+  <div id="setup-banner" class="card" style="margin-bottom:1rem; display:none;">
+    <p style="font-size:13px; margin:0 0 6px; font-weight:600;">Fast fertig</p>
+    <p style="font-size:12px; margin:0; color:#5F5E5A;">Trag deine Supabase-URL und den anon key in supabase-config.js ein, damit ihr beide dieselben Daten seht. Anleitung liegt in ANLEITUNG.md bei.</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; margin-bottom:4px;">
+    <button class="tab-btn" data-tab="reminders"><i class="ti ti-note"></i>Notizen</button>
+    <button class="tab-btn" data-tab="shopping"><i class="ti ti-shopping-cart"></i>Einkauf</button>
+    <button class="tab-btn" data-tab="recipes"><i class="ti ti-chef-hat"></i>Rezepte</button>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; margin-bottom:1rem;">
+    <button class="tab-btn" data-tab="calendar"><i class="ti ti-calendar"></i>Kalender</button>
+    <button class="tab-btn" data-tab="budget"><i class="ti ti-wallet"></i>Budget</button>
+    <button class="tab-btn" data-tab="trip"><i class="ti ti-plane"></i>Urlaub</button>
+  </div>
+
+  <div id="view-reminders" class="view">
+    <div style="display:flex; gap:8px; margin-bottom:0.75rem;">
+      <input id="reminder-input" type="text" placeholder="Neue Erinnerung" style="flex:1;">
+      <button id="add-reminder" aria-label="Hinzufügen" style="width:36px; padding:0;"><i class="ti ti-plus"></i></button>
+    </div>
+    <div id="reminder-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <p id="reminder-empty" class="empty" style="display:none;">Keine Erinnerungen. Fügt eure erste hinzu.</p>
+  </div>
+
+  <div id="view-shopping" class="view">
+    <div style="display:flex; gap:8px; margin-bottom:0.75rem;">
+      <input id="shopping-input" type="text" placeholder="Neuer Artikel" style="flex:1;">
+      <button id="add-shopping" aria-label="Hinzufügen" style="width:36px; padding:0;"><i class="ti ti-plus"></i></button>
+    </div>
+    <div id="shopping-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <p id="shopping-empty" class="empty" style="display:none;">Liste ist leer.</p>
+  </div>
+
+  <div id="view-recipes" class="view">
+    <div class="card" style="margin-bottom:0.75rem;">
+      <p style="font-size:12px; color:#5F5E5A; margin:0 0 6px;">Diese Woche, zutatenabgestimmt</p>
+      <div id="week-recipe-names" style="display:flex; flex-direction:column; gap:4px; margin-bottom:8px;"></div>
+      <p id="overlap-note" style="font-size:11px; color:#185FA5; margin:0 0 8px;"></p>
+      <div style="display:flex; gap:8px;">
+        <button id="add-week-to-list" style="flex:1; font-size:12px;"><i class="ti ti-shopping-cart" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>Zutaten zur Liste</button>
+        <button id="shuffle-week" aria-label="Andere Kombination" style="width:36px; padding:0;"><i class="ti ti-refresh"></i></button>
+      </div>
+    </div>
+    <p style="font-size:12px; color:#5F5E5A; margin:0 0 8px;">Eure Sammlung</p>
+    <div id="recipe-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <div style="display:flex; gap:8px; margin-top:0.75rem;">
+      <input id="recipe-input" type="text" placeholder="Neues Rezept (Name)" style="flex:1;">
+      <button id="add-recipe" aria-label="Hinzufügen" style="width:36px; padding:0;"><i class="ti ti-plus"></i></button>
+    </div>
+  </div>
+
+  <div id="view-calendar" class="view">
+    <div style="display:flex; gap:8px; margin-bottom:0.75rem;">
+      <input id="event-date" type="date" style="width:150px;">
+      <input id="event-input" type="text" placeholder="Was steht an?" style="flex:1;">
+    </div>
+    <button id="add-event" style="width:100%; margin-bottom:0.75rem; font-size:13px;"><i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>Termin hinzufügen</button>
+    <div id="event-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <p id="event-empty" class="empty" style="display:none;">Noch keine Termine.</p>
+  </div>
+
+  <div id="view-budget" class="view">
+    <div class="card" style="margin-bottom:0.75rem;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+        <span style="font-size:12px; color:#5F5E5A;">Ausgegeben diesen Monat</span>
+        <span id="budget-spent" style="font-size:18px; font-weight:600;">CHF 0</span>
+      </div>
+      <div style="height:6px; background:#F1EFE8; border-radius:4px; overflow:hidden;">
+        <div id="budget-bar" style="height:100%; background:#378ADD; width:0%;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:6px;">
+        <span class="tiny">von <span id="budget-limit-label">CHF 1200</span> Limit</span>
+        <button id="edit-limit" style="border:none; background:none; padding:0; height:auto; font-size:11px; color:#185FA5;">Ändern</button>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:0.75rem;">
+      <input id="expense-name" type="text" placeholder="Wofür" style="flex:1;">
+      <input id="expense-amount" type="number" placeholder="CHF" style="width:90px;">
+    </div>
+    <button id="add-expense" style="width:100%; margin-bottom:0.75rem; font-size:13px;"><i class="ti ti-plus" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>Ausgabe hinzufügen</button>
+    <div id="expense-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <p id="expense-empty" class="empty" style="display:none;">Noch keine Ausgaben erfasst.</p>
+  </div>
+
+  <div id="view-trip" class="view">
+    <div style="display:flex; gap:8px; margin-bottom:0.75rem;">
+      <input id="trip-input" type="text" placeholder="Reiseziel oder To-do" style="flex:1;">
+      <button id="add-trip" aria-label="Hinzufügen" style="width:36px; padding:0;"><i class="ti ti-plus"></i></button>
+    </div>
+    <div id="trip-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+    <p id="trip-empty" class="empty" style="display:none;">Noch nichts geplant.</p>
+  </div>
+
+  <p class="tiny" style="text-align:center; margin:1.5rem 0 0;">Unser privates Dashboard</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script>
+document.getElementById('today').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+
+let supabase = null;
+let useCloud = false;
+try {
+  if (window.supabaseConfig && window.supabaseConfig.url && window.supabaseConfig.url !== 'DEINE_SUPABASE_URL') {
+    supabase = window.supabase.createClient(window.supabaseConfig.url, window.supabaseConfig.anonKey);
+    useCloud = true;
+    document.getElementById('sync-status').innerHTML = '<i class="ti ti-cloud-check" style="font-size:13px; vertical-align:-2px;"></i> geteilt';
+  } else {
+    document.getElementById('setup-banner').style.display = 'block';
+    document.getElementById('sync-status').innerHTML = '<i class="ti ti-device-mobile" style="font-size:13px; vertical-align:-2px;"></i> nur dieses Gerät';
+  }
+} catch (e) {
+  document.getElementById('setup-banner').style.display = 'block';
+  document.getElementById('sync-status').innerHTML = '<i class="ti ti-device-mobile" style="font-size:13px; vertical-align:-2px;"></i> nur dieses Gerät';
+}
+
+async function loadList(key) {
+  if (useCloud) {
+    try {
+      const { data, error } = await supabase.from('dashboard').select('value').eq('key', key).maybeSingle();
+      if (error) throw error;
+      return data ? data.value : [];
+    } catch (e) { console.error(e); return JSON.parse(localStorage.getItem(key) || '[]'); }
+  }
+  return JSON.parse(localStorage.getItem(key) || '[]');
+}
+async function saveList(key, items) {
+  if (useCloud) {
+    try {
+      const { error } = await supabase.from('dashboard').upsert({ key, value: items });
+      if (error) throw error;
+      return;
+    } catch (e) { console.error(e); }
+  }
+  localStorage.setItem(key, JSON.stringify(items));
+}
+async function loadValue(key, fallback) {
+  if (useCloud) {
+    try {
+      const { data, error } = await supabase.from('dashboard').select('value').eq('key', key).maybeSingle();
+      if (error) throw error;
+      return data ? data.value : fallback;
+    } catch (e) { console.error(e); }
+  }
+  const v = localStorage.getItem(key);
+  return v !== null ? JSON.parse(v) : fallback;
+}
+async function saveValue(key, val) {
+  if (useCloud) {
+    try {
+      const { error } = await supabase.from('dashboard').upsert({ key, value: val });
+      if (error) throw error;
+      return;
+    } catch (e) { console.error(e); }
+  }
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+const tabs = document.querySelectorAll('.tab-btn');
+const views = {
+  reminders: document.getElementById('view-reminders'),
+  shopping: document.getElementById('view-shopping'),
+  recipes: document.getElementById('view-recipes'),
+  calendar: document.getElementById('view-calendar'),
+  budget: document.getElementById('view-budget'),
+  trip: document.getElementById('view-trip')
+};
+function setActiveTab(which) {
+  tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === which));
+  Object.keys(views).forEach(k => views[k].classList.toggle('active', k === which));
+}
+tabs.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
+setActiveTab('reminders');
+
+function checkRowHTML(item, idx, kind) {
+  const checked = item.done ? 'checked' : '';
+  const textStyle = item.done ? 'text-decoration: line-through; color: #888780;' : '';
+  return '<div class="row"><input type="checkbox" class="' + kind + '-check" data-idx="' + idx + '" ' + checked + '>' +
+    '<span style="flex:1; font-size:14px; ' + textStyle + '">' + item.text + '</span>' +
+    '<button class="' + kind + '-del" data-idx="' + idx + '" aria-label="Löschen" style="width:28px; height:28px; padding:0; border:none; background:transparent;"><i class="ti ti-x" style="font-size:16px; color:#888780;"></i></button></div>';
+}
+function wireList(kind, key, render) {
+  document.getElementById(kind + '-list').querySelectorAll('.' + kind + '-check').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const items = await loadList(key);
+      items[+e.target.dataset.idx].done = e.target.checked;
+      await saveList(key, items);
+      render();
+    });
+  });
+  document.getElementById(kind + '-list').querySelectorAll('.' + kind + '-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const items = await loadList(key);
+      items.splice(+e.currentTarget.dataset.idx, 1);
+      await saveList(key, items);
+      render();
+    });
+  });
+}
+
+const REMINDERS_KEY = 'reminders-list';
+async function renderReminders() {
+  const items = await loadList(REMINDERS_KEY);
+  document.getElementById('reminder-empty').style.display = items.length === 0 ? 'block' : 'none';
+  document.getElementById('reminder-list').innerHTML = items.map((it, i) => checkRowHTML(it, i, 'reminder')).join('');
+  wireList('reminder', REMINDERS_KEY, renderReminders);
+}
+document.getElementById('add-reminder').addEventListener('click', async () => {
+  const input = document.getElementById('reminder-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const items = await loadList(REMINDERS_KEY);
+  items.push({ text, done: false });
+  await saveList(REMINDERS_KEY, items);
+  input.value = '';
+  renderReminders();
+});
+document.getElementById('reminder-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-reminder').click(); });
+
+const SHOPPING_KEY = 'shopping-list';
+async function renderShopping() {
+  const items = await loadList(SHOPPING_KEY);
+  document.getElementById('shopping-empty').style.display = items.length === 0 ? 'block' : 'none';
+  document.getElementById('shopping-list').innerHTML = items.map((it, i) => checkRowHTML(it, i, 'shopping')).join('');
+  wireList('shopping', SHOPPING_KEY, renderShopping);
+}
+document.getElementById('add-shopping').addEventListener('click', async () => {
+  const input = document.getElementById('shopping-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const items = await loadList(SHOPPING_KEY);
+  items.push({ text, done: false });
+  await saveList(SHOPPING_KEY, items);
+  input.value = '';
+  renderShopping();
+});
+document.getElementById('shopping-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-shopping').click(); });
+
+const EVENTS_KEY = 'calendar-events';
+function fmtDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+async function renderEvents() {
+  let items = await loadList(EVENTS_KEY);
+  items.sort((a, b) => a.date.localeCompare(b.date));
+  document.getElementById('event-empty').style.display = items.length === 0 ? 'block' : 'none';
+  document.getElementById('event-list').innerHTML = items.map((it, i) =>
+    '<div class="row"><span style="font-size:11px; color:#5F5E5A; min-width:64px;">' + fmtDate(it.date) + '</span>' +
+    '<span style="flex:1; font-size:14px;">' + it.text + '</span>' +
+    '<button class="event-del" data-idx="' + i + '" aria-label="Löschen" style="width:28px; height:28px; padding:0; border:none; background:transparent;"><i class="ti ti-x" style="font-size:16px; color:#888780;"></i></button></div>'
+  ).join('');
+  document.getElementById('event-list').querySelectorAll('.event-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      let items = await loadList(EVENTS_KEY);
+      items.sort((a, b) => a.date.localeCompare(b.date));
+      items.splice(+e.currentTarget.dataset.idx, 1);
+      await saveList(EVENTS_KEY, items);
+      renderEvents();
+    });
+  });
+}
+document.getElementById('add-event').addEventListener('click', async () => {
+  const dateInput = document.getElementById('event-date');
+  const textInput = document.getElementById('event-input');
+  const date = dateInput.value;
+  const text = textInput.value.trim();
+  if (!date || !text) return;
+  const items = await loadList(EVENTS_KEY);
+  items.push({ date, text });
+  await saveList(EVENTS_KEY, items);
+  textInput.value = '';
+  renderEvents();
+});
+
+const EXPENSES_KEY = 'budget-expenses';
+const LIMIT_KEY = 'budget-limit';
+async function renderBudget() {
+  const items = await loadList(EXPENSES_KEY);
+  const limit = await loadValue(LIMIT_KEY, 1200);
+  const spent = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+  document.getElementById('budget-spent').textContent = 'CHF ' + Math.round(spent).toLocaleString('de-CH');
+  document.getElementById('budget-limit-label').textContent = 'CHF ' + Math.round(limit).toLocaleString('de-CH');
+  const pct = limit > 0 ? Math.min(100, Math.round((spent / limit) * 100)) : 0;
+  document.getElementById('budget-bar').style.width = pct + '%';
+  document.getElementById('budget-bar').style.background = pct >= 100 ? '#E24B4A' : pct >= 80 ? '#EF9F27' : '#378ADD';
+  document.getElementById('expense-empty').style.display = items.length === 0 ? 'block' : 'none';
+  document.getElementById('expense-list').innerHTML = items.map((it, i) =>
+    '<div class="row"><span style="flex:1; font-size:14px;">' + it.text + '</span>' +
+    '<span style="font-size:13px; color:#5F5E5A;">CHF ' + Math.round(Number(it.amount) || 0).toLocaleString('de-CH') + '</span>' +
+    '<button class="expense-del" data-idx="' + i + '" aria-label="Löschen" style="width:28px; height:28px; padding:0; border:none; background:transparent;"><i class="ti ti-x" style="font-size:16px; color:#888780;"></i></button></div>'
+  ).join('');
+  document.getElementById('expense-list').querySelectorAll('.expense-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const items = await loadList(EXPENSES_KEY);
+      items.splice(+e.currentTarget.dataset.idx, 1);
+      await saveList(EXPENSES_KEY, items);
+      renderBudget();
+    });
+  });
+}
+document.getElementById('add-expense').addEventListener('click', async () => {
+  const nameInput = document.getElementById('expense-name');
+  const amountInput = document.getElementById('expense-amount');
+  const text = nameInput.value.trim();
+  const amount = parseFloat(amountInput.value);
+  if (!text || isNaN(amount)) return;
+  const items = await loadList(EXPENSES_KEY);
+  items.push({ text, amount });
+  await saveList(EXPENSES_KEY, items);
+  nameInput.value = '';
+  amountInput.value = '';
+  renderBudget();
+});
+document.getElementById('edit-limit').addEventListener('click', async () => {
+  const current = await loadValue(LIMIT_KEY, 1200);
+  const next = prompt('Neues Budget-Limit (CHF):', current);
+  if (next === null) return;
+  const val = parseFloat(next);
+  if (isNaN(val)) return;
+  await saveValue(LIMIT_KEY, val);
+  renderBudget();
+});
+
+const TRIP_KEY = 'trip-list';
+async function renderTrip() {
+  const items = await loadList(TRIP_KEY);
+  document.getElementById('trip-empty').style.display = items.length === 0 ? 'block' : 'none';
+  document.getElementById('trip-list').innerHTML = items.map((it, i) => checkRowHTML(it, i, 'trip')).join('');
+  wireList('trip', TRIP_KEY, renderTrip);
+}
+document.getElementById('add-trip').addEventListener('click', async () => {
+  const input = document.getElementById('trip-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const items = await loadList(TRIP_KEY);
+  items.push({ text, done: false });
+  await saveList(TRIP_KEY, items);
+  input.value = '';
+  renderTrip();
+});
+document.getElementById('trip-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-trip').click(); });
+
+const RECIPES_KEY = 'recipes-list';
+const WEEK_PAIR_KEY = 'week-recipe-pair';
+const DEFAULT_RECIPES = [
+  { name: 'Hähnchen-Zucchini-Pfanne mit Pilzen', ingredients: ['Hähnchenbrust', 'Zucchini', 'Champignons', 'Knoblauch', 'Olivenöl', 'Salz und Pfeffer'] },
+  { name: 'Hähnchen-Feta-Bowl', ingredients: ['Hähnchenbrust', 'Feta', 'Gurke', 'Cherrytomaten', 'Olivenöl', 'Zitrone'] },
+  { name: 'Ofengemüse mit Feta', ingredients: ['Zucchini', 'Feta', 'Paprika', 'Cherrytomaten', 'Olivenöl', 'Rosmarin'] },
+  { name: 'Griechischer Bauernsalat mit Garnelen', ingredients: ['Garnelen', 'Feta', 'Gurke', 'Cherrytomaten', 'Oliven', 'Olivenöl'] },
+  { name: 'Blumenkohl-Couscous mit Garnelen', ingredients: ['Garnelen', 'Blumenkohl', 'Paprika', 'Zitrone', 'Knoblauch', 'Petersilie'] },
+  { name: 'Gebratener Blumenkohlreis asiatisch', ingredients: ['Blumenkohl', 'Ei', 'Frühlingszwiebel', 'Knoblauch', 'Sojasauce', 'Ingwer'] },
+  { name: 'Senfeier mit gedünstetem Blumenkohl', ingredients: ['Ei', 'Blumenkohl', 'Senf', 'Butter', 'Petersilie', 'Salz und Pfeffer'] },
+  { name: 'Zucchini-Lasagne mit Hackfleisch', ingredients: ['Zucchini', 'Hackfleisch', 'Passierte Tomaten', 'Mozzarella', 'Parmesan', 'Knoblauch'] }
+];
+const DEFAULT_DESSERT = { name: 'Low Carb Käsekuchen (6 Zutaten)', ingredients: ['Frischkäse', 'Eier', 'Erythrit', 'Vanilleextrakt', 'Zitrone', 'Butter'] };
+
+async function ensureRecipes() {
+  let recipes = await loadList(RECIPES_KEY);
+  if (recipes.length === 0) {
+    recipes = DEFAULT_RECIPES;
+    await saveList(RECIPES_KEY, recipes);
+  }
+  return recipes;
+}
+async function ensureDessert() {
+  let dessert = await loadValue('dessert-recipe', null);
+  if (!dessert) {
+    dessert = DEFAULT_DESSERT;
+    await saveValue('dessert-recipe', dessert);
+  }
+  return dessert;
+}
+function normIng(s) { return s.trim().toLowerCase(); }
+function overlapCount(a, b) {
+  const setA = new Set((a.ingredients || []).map(normIng));
+  const setB = new Set((b.ingredients || []).map(normIng));
+  let count = 0;
+  setA.forEach(x => { if (setB.has(x)) count++; });
+  return count;
+}
+function bestPairIndex(recipes, excludePair) {
+  if (recipes.length < 2) return [0, 0];
+  let best = null;
+  let bestScore = -1;
+  for (let i = 0; i < recipes.length; i++) {
+    for (let j = i + 1; j < recipes.length; j++) {
+      const score = overlapCount(recipes[i], recipes[j]);
+      const isExcluded = excludePair && (excludePair[0] === i && excludePair[1] === j);
+      if (score > bestScore && !isExcluded) { bestScore = score; best = [i, j]; }
+    }
+  }
+  return best || [0, Math.min(1, recipes.length - 1)];
+}
+async function renderRecipes() {
+  const recipes = await ensureRecipes();
+  const dessert = await ensureDessert();
+  let pair = await loadValue(WEEK_PAIR_KEY, null);
+  if (!pair || pair[0] >= recipes.length || pair[1] >= recipes.length) {
+    pair = bestPairIndex(recipes, null);
+    await saveValue(WEEK_PAIR_KEY, pair);
+  }
+  const r1 = recipes[pair[0]];
+  const r2 = recipes[pair[1]];
+  document.getElementById('week-recipe-names').innerHTML =
+    '<p style="font-size:15px; font-weight:600; margin:0;">' + r1.name + '</p>' +
+    '<p style="font-size:15px; font-weight:600; margin:0;">' + r2.name + '</p>' +
+    '<p style="font-size:13px; margin:2px 0 0; color:#5F5E5A;"><i class="ti ti-cup" style="font-size:13px; vertical-align:-1px; margin-right:4px;"></i>' + dessert.name + '</p>';
+  const overlap = overlapCount(r1, r2);
+  document.getElementById('overlap-note').textContent = overlap > 0 ? overlap + ' gemeinsame Zutaten, weniger Einkauf' : 'Keine Überschneidung diese Woche';
+  document.getElementById('recipe-list').innerHTML = recipes.map((r, i) => {
+    const isThisWeek = i === pair[0] || i === pair[1];
+    return '<div class="row" style="' + (isThisWeek ? 'border-color:#5F5E5A;' : '') + '">' +
+    '<span style="flex:1; font-size:14px;">' + r.name + '</span>' +
+    '<button class="recipe-del" data-idx="' + i + '" aria-label="Löschen" style="width:28px; height:28px; padding:0; border:none; background:transparent;"><i class="ti ti-x" style="font-size:16px; color:#888780;"></i></button></div>';
+  }).join('') +
+  '<div class="row"><i class="ti ti-cup" style="font-size:15px; color:#888780;"></i>' +
+  '<span style="flex:1; font-size:14px;">' + dessert.name + '</span>' +
+  '<span class="tiny">Dessert</span></div>';
+  document.getElementById('recipe-list').querySelectorAll('.recipe-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const recipes = await loadList(RECIPES_KEY);
+      recipes.splice(+e.currentTarget.dataset.idx, 1);
+      await saveList(RECIPES_KEY, recipes);
+      await saveValue(WEEK_PAIR_KEY, null);
+      renderRecipes();
+    });
+  });
+}
+document.getElementById('shuffle-week').addEventListener('click', async () => {
+  const recipes = await ensureRecipes();
+  const current = await loadValue(WEEK_PAIR_KEY, null);
+  const next = bestPairIndex(recipes, current);
+  await saveValue(WEEK_PAIR_KEY, next);
+  renderRecipes();
+});
+document.getElementById('add-week-to-list').addEventListener('click', async () => {
+  const recipes = await ensureRecipes();
+  const dessert = await ensureDessert();
+  const pair = await loadValue(WEEK_PAIR_KEY, [0, 0]);
+  const combined = new Set();
+  [recipes[pair[0]], recipes[pair[1]], dessert].forEach(r => (r.ingredients || []).forEach(i => combined.add(i)));
+  const items = await loadList(SHOPPING_KEY);
+  combined.forEach(ing => items.push({ text: ing, done: false }));
+  await saveList(SHOPPING_KEY, items);
+  renderShopping();
+  const btn = document.getElementById('add-week-to-list');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i class="ti ti-check" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>Hinzugefügt';
+  setTimeout(() => { btn.innerHTML = original; }, 1500);
+});
+document.getElementById('add-recipe').addEventListener('click', async () => {
+  const input = document.getElementById('recipe-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const recipes = await loadList(RECIPES_KEY);
+  recipes.push({ name, ingredients: [] });
+  await saveList(RECIPES_KEY, recipes);
+  input.value = '';
+  renderRecipes();
+});
+document.getElementById('recipe-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('add-recipe').click(); });
+
+renderReminders();
+renderShopping();
+renderEvents();
+renderBudget();
+renderTrip();
+renderRecipes();
+</script>
+</body>
+</html>
