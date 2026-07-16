@@ -52,21 +52,24 @@ button{ font-family: var(--font-body); cursor:pointer; }
 #scrollBar{ height:100%; width:0%; background: linear-gradient(90deg, var(--gold), var(--silver)); }
 
 /* ==========================================================================
-   PANELS — jede Sektion ist ein Vollbild-Panel mit Bild-Hintergrund.
+   VIEW-ROUTING — nur ein Panel gleichzeitig sichtbar (Landing + Bereiche)
+   ========================================================================== */
+.view{ display:none; }
+.view.is-active{ display:flex; animation: viewIn .5s var(--ease); }
+@keyframes viewIn{ from{ opacity:0; } to{ opacity:1; } }
+
+/* ==========================================================================
+   PANELS — Vollbild-Panel mit Bild-Hintergrund.
    Text liegt NIE direkt auf dem Bild, sondern immer in weißen Widgets.
    ========================================================================== */
-#smoothWrapper{ width:100%; }
-
 .panel{
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  display:flex;
   flex-direction: column;
   justify-content: center;
-  padding: 120px 7vw;
+  padding: 150px 7vw 100px;
 }
-.panel--hero{ padding-top: 140px; }
 .panel--footer{ min-height: 60vh; }
 
 .bg{
@@ -79,7 +82,6 @@ button{ font-family: var(--font-body); cursor:pointer; }
   object-fit: cover;
   display:block;
 }
-/* Sanfter Ivory-Schleier an den Rändern, damit Panels weich ineinander übergehen */
 .veil{
   position:absolute; inset:0; z-index:1; pointer-events:none;
   background:
@@ -91,8 +93,7 @@ button{ font-family: var(--font-body); cursor:pointer; }
 .panel__content--hero{ display:flex; align-items:flex-end; min-height: 62vh; }
 
 /* ==========================================================================
-   WIDGETS — opake weiße Karten, schwarze Schrift, vergoldete Oberkante
-   (die Signatur der Seite: eine 2px-Goldlinie wie eine Messingkante).
+   WIDGETS — opake weiße Karten, schwarze Schrift, vergoldete Oberkante.
    ========================================================================== */
 .widget{
   background: var(--white);
@@ -103,18 +104,26 @@ button{ font-family: var(--font-body); cursor:pointer; }
   padding: 40px 42px;
 }
 
+/* Feste Navigations-Pille oben */
 .widget--nav{
-  position:absolute; top: 34px; left: 7vw; right: 7vw; z-index: 3;
+  position:fixed; top: 24px; left: 7vw; right: 7vw; z-index: 420;
   display:flex; justify-content: space-between; align-items: center;
-  padding: 16px 26px;
+  gap: 14px;
+  padding: 14px 24px;
   border-radius: 999px;
 }
-.nav__mark{ font-family: var(--font-display); font-size: 15px; letter-spacing: .06em; }
-.sync-badge{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--taupe); }
+.nav__mark{ font-family: var(--font-display); font-size: 15px; letter-spacing: .06em; flex:1; text-align:center; }
+.nav__back{
+  border:none; background:none; color: var(--gold-deep);
+  font-size: 12px; font-weight:500; letter-spacing:.1em; text-transform:uppercase;
+  padding: 4px 2px; white-space:nowrap;
+}
+.nav__back:hover{ color: var(--ink); }
+.sync-badge{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--taupe); white-space:nowrap; }
 .sync-badge.is-live{ color: var(--gold-deep); }
 
-.widget--hero{ max-width: 620px; }
-.widget--head{ max-width: 640px; margin-bottom: 44px; }
+.widget--hero{ max-width: 660px; }
+.widget--head{ max-width: 660px; margin-bottom: 44px; }
 .widget--hint{ display:inline-block; padding: 10px 20px; border-radius: 999px; margin-top: 18px; }
 .widget--hint p{ font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--taupe); }
 
@@ -140,6 +149,28 @@ button{ font-family: var(--font-body); cursor:pointer; }
 .section__desc{ margin-top: 18px; font-size: 15px; font-weight: 300; line-height: 1.65; color: var(--ink-soft); }
 
 /* ==========================================================================
+   LANDING — Navigations-Kacheln (im Hero-Widget)
+   ========================================================================== */
+.hero-tiles{
+  margin-top: 34px;
+  display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.hero-tile{
+  display:flex; flex-direction:column; align-items:flex-start; gap: 8px;
+  text-align:left;
+  background: var(--ivory);
+  border: 1px solid var(--greige);
+  border-top: 2px solid var(--gold);
+  border-radius: var(--radius-md);
+  padding: 20px 18px;
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease), background .25s var(--ease);
+}
+.hero-tile:hover{ transform: translateY(-5px); background: var(--white); box-shadow: var(--shadow-widget); }
+.hero-tile__icon{ font-size: 24px; }
+.hero-tile__title{ font-family: var(--font-display); font-size: 17px; line-height:1.2; }
+.hero-tile__meta{ font-size: 12px; letter-spacing:.04em; color: var(--taupe); }
+
+/* ==========================================================================
    BUTTONS
    ========================================================================== */
 .btn{
@@ -158,7 +189,7 @@ button{ font-family: var(--font-body); cursor:pointer; }
 .btn:focus-visible, .add-row button:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ==========================================================================
-   WOCHENPLAN — Tageskarten als weiße Widgets im horizontalen Rail
+   WOCHENPLAN / KALENDER — Tageskarten als weiße Widgets im horizontalen Rail
    ========================================================================== */
 .day-rail{
   display:flex; gap: 18px; overflow-x:auto; scroll-snap-type: x proximity;
@@ -178,13 +209,19 @@ button{ font-family: var(--font-body); cursor:pointer; }
   transition: transform .5s var(--ease), box-shadow .5s var(--ease);
 }
 .day-card:hover{ transform: translateY(-8px); }
+.day-card.is-today{ border-top: 3px solid var(--gold-deep); box-shadow: 0 0 0 2px var(--gold), var(--shadow-widget); }
 .day-card__day{ font-size: 11px; font-weight: 500; letter-spacing:.2em; text-transform:uppercase; color: var(--gold-deep); }
-.day-card__meal{ margin-top: 14px; font-family: var(--font-display); font-size: 20px; line-height: 1.32; }
+.day-card__meal{ margin-top: 14px; font-family: var(--font-display); font-size: 20px; line-height: 1.32; min-height: 30px; }
 .day-card__meta{ margin-top: 14px; font-size: 12px; letter-spacing: .06em; color: var(--taupe); }
 .day-card__link{
   display:inline-block; margin-top: 16px; padding-top: 12px;
   font-size: 11px; letter-spacing:.12em; text-transform: uppercase;
   color: var(--gold-deep); border-top: 1px solid var(--greige); width:100%;
+}
+.day-card select{
+  width:100%; margin-top: 14px; font-family: var(--font-body); font-size: 12px; padding: 8px;
+  border-radius: var(--radius-sm); border: 1px solid var(--stone);
+  background: var(--ivory); color: var(--ink);
 }
 
 /* ==========================================================================
@@ -209,53 +246,62 @@ button{ font-family: var(--font-body); cursor:pointer; }
   font-size: 10px; letter-spacing:.18em; text-transform:uppercase; color: var(--taupe);
 }
 .recipe-card__body{ padding: 14px 14px 14px; }
-.recipe-card__title{ font-family: var(--font-display); font-size: 15px; line-height:1.35; margin: 10px 0 12px; }
+.recipe-card__title{ font-family: var(--font-display); font-size: 15px; line-height:1.35; margin: 10px 0 8px; }
 .platform-tag{
   font-size: 9.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase;
   padding: 4px 10px; border-radius: 999px; display:inline-block;
   border: 1px solid var(--gold); color: var(--gold-deep);
 }
-.recipe-card select{
-  width:100%; font-family: var(--font-body); font-size: 12px; padding: 8px;
-  border-radius: var(--radius-sm); border: 1px solid var(--stone);
-  background: var(--ivory); color: var(--ink); margin-bottom: 8px;
-}
 .recipe-card__remove{
-  width:100%; border:none; border-radius: var(--radius-sm);
+  width:100%; margin-top: 10px; border:none; border-radius: var(--radius-sm);
   background: var(--ivory); color: var(--taupe);
   font-size: 11px; letter-spacing:.1em; text-transform:uppercase; padding: 7px;
 }
 .recipe-card__remove:hover{ color: var(--ink); }
 
 /* ==========================================================================
-   EINKAUFSLISTE — Kategorie-Widgets
+   EINKAUFSLISTE — Kategorie-Widgets (Drag & Drop, umbenennen, Swipe-Löschen)
    ========================================================================== */
 .list-grid{
   display:grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
+.category-card-row{ overflow:hidden; transition: max-height .2s ease, opacity .2s ease; }
 .category-card{
   background: var(--white);
   border-radius: var(--radius-md);
   border-top: 2px solid var(--gold);
   box-shadow: var(--shadow-widget);
-  padding: 26px 24px 20px;
-  transition: transform .4s var(--ease);
+  padding: 22px 24px 20px;
+  transition: transform .4s var(--ease), box-shadow .25s var(--ease);
+  cursor: grab;
 }
-.category-card:hover{ transform: translateY(-5px); }
+.category-card:active{ cursor: grabbing; }
+.category-card.is-dragging{ opacity: .4; }
+.category-card.drag-over{ box-shadow: 0 0 0 2px var(--gold), var(--shadow-widget); }
+.category-card__head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap: 8px;
+  margin-bottom: 14px;
+}
 .category-card__tag{
   display:inline-block;
   font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase;
-  padding-bottom: 8px; margin-bottom: 14px;
+  padding-bottom: 8px;
   color: var(--ink);
   border-bottom: 1px solid var(--gold);
+  outline: none;
 }
+.category-card__tag:focus{ color: var(--gold-deep); }
 .category-card ul{ list-style:none; margin:0; padding:0; }
-.category-card li{ padding: 10px 0; border-bottom: 1px solid var(--greige); font-size: 15px; }
+.category-card li{ border-bottom: 1px solid var(--greige); }
 .category-card li:last-child{ border-bottom:none; }
 
-.item{ display:flex; align-items:center; gap: 12px; cursor:pointer; user-select:none; }
+.item-row{ overflow:hidden; }
+.item{
+  display:flex; align-items:center; gap: 12px; cursor:pointer; user-select:none;
+  padding: 10px 0; background: var(--white);
+}
 .check{
   width: 20px; height:20px; flex: 0 0 20px;
   border-radius: 50%;
@@ -268,6 +314,14 @@ button{ font-family: var(--font-body); cursor:pointer; }
 .item.is-checked .check svg{ opacity: 1; }
 .item.is-checked .item__text{ color: var(--taupe); text-decoration: line-through; text-decoration-color: var(--stone); }
 .item__text{ flex:1; font-size: 14.5px; font-weight: 400; letter-spacing: .01em; }
+.item__text small{ color: var(--taupe); font-size: 12px; }
+.item__calories{ font-size: 11px; letter-spacing:.04em; color: var(--gold-deep); white-space:nowrap; }
+.item-delete-btn{
+  border:none; background:none; color: var(--taupe); font-size: 17px; line-height:1;
+  width: 24px; height: 24px; flex-shrink:0; border-radius: 50%;
+}
+.item-delete-btn:hover{ color: var(--gold-deep); background: var(--ivory); }
+.category-delete-btn{ margin-top: -2px; }
 
 .add-row{ display:flex; gap: 8px; margin-top: 16px; }
 .add-row input{
@@ -283,25 +337,25 @@ button{ font-family: var(--font-body); cursor:pointer; }
 .add-row button:hover{ background: var(--gold-deep); }
 
 /* ==========================================================================
-   VORRAT
+   BACKLOG
    ========================================================================== */
 .widget--pantry{ text-align:center; }
-.widget--pantry .section__desc{ margin-left:auto; margin-right:auto; max-width: 420px; }
+.widget--pantry .section__desc{ margin-left:auto; margin-right:auto; max-width: 460px; }
+.backlog-total{
+  display:inline-block; margin-top: 26px;
+  font-size: 11px; letter-spacing:.14em; text-transform:uppercase; color: var(--gold-deep);
+  background: var(--ivory); border: 1px solid var(--greige); border-radius: 999px;
+  padding: 8px 18px;
+}
 .pantry-grid{
-  margin-top: 36px;
-  display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+  margin-top: 24px;
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
   gap: 6px 34px;
   text-align:left;
 }
-.pantry-grid .item{ padding: 8px 0; border-bottom: 1px dashed var(--greige); }
-.add-row--pantry{ max-width: 380px; margin: 26px auto 0; }
-
-/* ==========================================================================
-   FOOTER
-   ========================================================================== */
-.widget--footer{ text-align:center; }
-.footer__line{ font-family: var(--font-display); font-size: 22px; }
-.footer__meta{ margin-top: 10px; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--taupe); }
+.pantry-grid .item-row{ border-bottom: 1px dashed var(--greige); }
+.pantry-grid .item{ padding: 9px 0; }
+.add-row--pantry{ max-width: 420px; margin: 26px auto 0; }
 
 /* ==========================================================================
    MODALS
@@ -338,20 +392,38 @@ button{ font-family: var(--font-body); cursor:pointer; }
   margin: 22px 0 8px;
 }
 .field-label__hint{ text-transform:none; letter-spacing:.01em; font-weight: 300; font-size: 12px; }
-.field-row{ display:flex; gap: 10px; }
+.field-row{ display:flex; gap: 10px; align-items:center; }
 .field-row--split > div{ flex:1; }
-.field-row input, .field-row select, .modal select, .modal textarea, .modal input[type="url"]{
+.field-row input, .field-row select, .modal select, .modal textarea, .modal input[type="url"], .modal input[type="text"]{
   width:100%; font-family: var(--font-body); font-size: 14px; color: var(--ink);
   padding: 12px 13px; border-radius: var(--radius-sm); border: 1px solid var(--stone);
   background: var(--ivory);
 }
 .modal textarea{ resize: vertical; line-height: 1.6; }
-.field-row input:focus, .field-row select:focus, .modal textarea:focus, .modal select:focus{ outline: 2px solid var(--gold); outline-offset: 1px; }
+.field-row input:focus, .field-row select:focus, .modal textarea:focus, .modal select:focus, .modal input:focus{ outline: 2px solid var(--gold); outline-offset: 1px; }
 
 .import-preview{ display:flex; gap:14px; margin-top:18px; padding: 14px; background: var(--ivory); border-radius: var(--radius-sm); border: 1px solid var(--greige); }
 .import-preview__thumb{ width: 84px; height: 84px; object-fit:cover; border-radius: 10px; background: var(--greige); flex-shrink:0; }
 .import-preview__body{ flex:1; display:flex; flex-direction:column; gap:8px; }
 .import-preview__title{ border:1px solid var(--stone); border-radius: var(--radius-sm); padding: 9px 11px; font-size:14px; font-family: var(--font-body); background: var(--white); }
+
+/* Kalorien im Rezept-Modal */
+.ingredient-calories{ margin-top: 10px; display:flex; flex-direction:column; gap: 4px; }
+.ingredient-calories__row{ display:flex; justify-content:space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--greige); }
+.ingredient-calories__row span:last-child{ color: var(--gold-deep); font-weight:500; }
+.recipe-total-calories{ margin-top: 12px; font-size: 13px; font-weight:600; letter-spacing:.04em; color: var(--gold-deep); }
+
+/* Kassenzettel-Modal */
+.receipt-file-input{ width:100%; margin-top: 8px; font-size: 13px; }
+.receipt-results{ margin-top: 18px; display:flex; flex-direction:column; gap: 4px; }
+.receipt-item-row{
+  display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; align-items:center;
+  padding: 6px 0; border-bottom: 1px solid var(--greige);
+}
+.receipt-item-row input{
+  border: 1px solid var(--stone); border-radius: var(--radius-sm); padding: 7px 9px;
+  font-family: var(--font-body); font-size: 12.5px; background: var(--ivory); color: var(--ink); width:100%;
+}
 
 /* review list (Woche abschließen) */
 .review-list{ margin-top: 20px; display:flex; flex-direction:column; }
@@ -381,11 +453,14 @@ button{ font-family: var(--font-body); cursor:pointer; }
    RESPONSIVE
    ========================================================================== */
 @media (max-width: 720px){
-  .panel{ padding: 100px 5vw; }
+  .panel{ padding: 120px 5vw 80px; }
   .widget{ padding: 30px 24px; }
-  .widget--nav{ left: 5vw; right: 5vw; padding: 13px 20px; }
+  .widget--nav{ left: 4vw; right: 4vw; padding: 12px 18px; }
+  .nav__mark{ font-size: 13px; }
   .sync-badge{ font-size: 10px; }
-  .field-row--split{ flex-direction: column; }
+  .hero-tiles{ grid-template-columns: 1fr; }
+  .field-row--split{ flex-direction: column; align-items:stretch; }
   .modal{ padding: 30px 22px 26px; }
   .panel__content--hero{ align-items: center; }
+  .receipt-item-row{ grid-template-columns: 1fr; }
 }
