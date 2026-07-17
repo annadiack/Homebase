@@ -579,9 +579,18 @@ function recipeAddSelect(iso) {
   return `<select data-add-recipe="${iso}" aria-label="Rezept hinzufügen"><option value="">+ Rezept…</option>${state.recipes.map(r => `<option value="${r.id}">${esc(r.title)}</option>`).join("")}</select>`;
 }
 function shortTitle(s) {
-  let t = (s || "").split("#")[0].split("\n")[0].trim();
-  if (t.length > 48) t = t.slice(0, 48).trim() + "…";
-  return t || "Rezept";
+  // Titel nur bis zum ersten Sonderzeichen / Emoji / Satzende verwenden
+  const raw = (s || "").replace(/\r/g, "");
+  let out = "";
+  for (const ch of raw) {
+    if ("!?.,:;#|/\n\t".indexOf(ch) !== -1) break;
+    if (ch.codePointAt(0) >= 0x2190) break; // Pfeile, Symbole, Emojis
+    out += ch;
+  }
+  out = out.trim();
+  if (!out) out = raw.split("\n")[0].trim();
+  if (out.length > 60) out = out.slice(0, 60).trim() + "…";
+  return out || "Rezept";
 }
 function dayEntriesHTML(iso) {
   return calEntriesOn(iso).map(e => `
@@ -674,7 +683,7 @@ function renderRecipeGallery() {
     <div class="recipe-card ${open ? "is-open" : ""}" data-id="${r.id}">
       <button type="button" class="recipe-card__toggle" data-toggle-recipe="${r.id}">
         ${r.thumbnail ? `<img src="${esc(r.thumbnail)}" alt="" class="recipe-card__thumb">` : `<div class="recipe-card__thumb recipe-card__thumb--placeholder">${platformLabel(r.platform)}</div>`}
-        <span class="recipe-card__title">${esc(r.title)}</span>
+        <span class="recipe-card__title">${esc(shortTitle(r.title))}</span>
       </button>
       ${open ? `
         <div class="recipe-card__detail">
