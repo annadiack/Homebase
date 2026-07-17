@@ -86,7 +86,8 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .list-card__name:focus{ color:var(--gold-deep); }
 .list-card__meta{ font-size:13px; color:var(--ink-soft); }
 .list-card__hist{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--taupe); margin-top:4px; }
-.list-card__del{ position:absolute; top:12px; right:12px; }
+.list-card__actions{ position:absolute; top:12px; right:12px; display:flex; gap:2px; }
+.list-card__name[contenteditable="true"]{ background:var(--ivory); border-radius:6px; padding:2px 6px; box-shadow:0 0 0 2px var(--gold); cursor:text; }
 
 /* HISTORIE */
 .history-box{ margin-top:18px; background:var(--ivory); border:1px solid var(--greige); border-radius:var(--radius-md); padding:16px 18px; }
