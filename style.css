@@ -77,7 +77,7 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .add-category-row input{ border:1px solid var(--stone); border-radius:var(--radius-sm); padding:11px 14px; font-family:var(--font-body); font-size:14px; color:var(--ink); background:var(--ivory); min-width:200px; }
 .add-category-row input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
 
-/* LISTEN-ÃœBERSICHT */
+/* LISTEN-ÜBERSICHT */
 .lists-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:18px; }
 .list-card{ position:relative; background:var(--white); border-radius:var(--radius-md); border-top:2px solid var(--gold); box-shadow:var(--shadow-widget); padding:24px 22px 20px; display:flex; flex-direction:column; gap:6px; cursor:pointer; transition:transform .3s var(--ease); }
 .list-card:hover{ transform:translateY(-5px); }
@@ -94,7 +94,7 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .hist-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--greige); font-size:14px; }
 .hist-row:last-child{ border-bottom:none; }
 
-/* EINKAUFSLISTE â€” Kategorien */
+/* EINKAUFSLISTE — Kategorien */
 .list-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:20px; align-items:start; }
 .category-card-row{ transition:opacity .15s ease; }
 .category-card-row.is-dragging{ opacity:.5; pointer-events:none; }
@@ -146,10 +146,14 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .cal-dom{ font-family:var(--font-display); font-size:18px; }
 .cal-day-row__body{ flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
 .cal-chips{ display:flex; flex-wrap:wrap; gap:6px; }
-.cal-chip{ display:inline-flex; align-items:center; gap:6px; background:var(--white); border:1px solid var(--gold); color:var(--ink); border-radius:999px; padding:5px 6px 5px 12px; font-size:13px; }
-.cal-chip__x{ border:none; background:none; color:var(--taupe); font-size:15px; line-height:1; width:18px; height:18px; border-radius:50%; }
-.cal-chip__x:hover{ color:var(--gold-deep); background:var(--ivory); }
+.cal-chip{ display:inline-flex; align-items:center; gap:4px; background:var(--white); border:1px solid var(--gold); color:var(--ink); border-radius:999px; padding:4px 6px 4px 12px; font-size:13px; max-width:100%; }
+.cal-chip.is-open{ background:var(--gold); color:var(--white); }
+.cal-chip__label{ border:none; background:none; color:inherit; font:inherit; cursor:pointer; text-align:left; padding:2px 0; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-chip__x{ border:none; background:none; color:inherit; opacity:.7; font-size:15px; line-height:1; width:18px; height:18px; border-radius:50%; flex-shrink:0; }
+.cal-chip__x:hover{ opacity:1; background:rgba(0,0,0,.08); }
 .cal-empty{ color:var(--taupe); font-size:14px; }
+.cal-detail{ background:var(--white); border:1px solid var(--greige); border-left:3px solid var(--gold); border-radius:var(--radius-sm); padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+.cal-detail__title{ font-size:13.5px; font-weight:500; line-height:1.4; }
 .cal-day-row__body select{ max-width:280px; font-family:var(--font-body); font-size:12.5px; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--stone); background:var(--white); color:var(--ink); }
 .cal-month__head{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
 .cal-month__head span{ text-align:center; font-size:10.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--taupe); }
