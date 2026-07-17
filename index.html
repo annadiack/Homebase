@@ -19,6 +19,32 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="HomeBase">
 <meta name="theme-color" content="#C6A46A">
+<!-- DIAGNOSE (temporär) — zeigt Fehler/Taps unten am Bildschirm -->
+<script>
+(function(){
+  window.__diag = [];
+  function render(){
+    var b = document.getElementById('__diagbox');
+    if(!b){
+      b = document.createElement('div'); b.id='__diagbox';
+      b.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1C1B19;color:#F8F5F0;font:11px/1.45 monospace;padding:8px 10px;max-height:42vh;overflow:auto;white-space:pre-wrap;border-top:2px solid #C6A46A';
+      (document.body||document.documentElement).appendChild(b);
+    }
+    b.textContent='● DIAGNOSE (kann ich später entfernen)\n'+window.__diag.slice(-14).join('\n');
+  }
+  window.__log=function(m){ window.__diag.push(m); if(document.body) render(); };
+  window.addEventListener('error',function(e){ window.__log('❌ FEHLER: '+e.message+' @ '+String(e.filename||'').split('/').pop()+':'+e.lineno); });
+  window.addEventListener('unhandledrejection',function(e){ window.__log('❌ PROMISE: '+((e.reason&&e.reason.message)||e.reason)); });
+  document.addEventListener('DOMContentLoaded',function(){
+    render();
+    window.__log('DOM bereit · supabase='+(typeof window.supabase)+' · config='+(typeof window.APP_CONFIG));
+    document.addEventListener('click',function(ev){
+      var t=ev.target.closest?ev.target.closest('[data-open-view],button,a'):null;
+      window.__log('👆 Tap: '+(t?((t.getAttribute&&t.getAttribute('data-open-view'))||t.id||t.className||t.tagName):ev.target.tagName));
+    },true);
+  });
+})();
+</script>
 </head>
 <body>
 
@@ -220,5 +246,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js?v=3"></script>
 <script src="script.js?v=3"></script>
+<script>
+  // Diagnose: hat script.js sauber geladen?
+  if (window.__log) window.__log('script.js: openView='+(typeof openView)+' · Kacheln='+document.querySelectorAll('[data-open-view]').length);
+</script>
 </body>
 </html>
