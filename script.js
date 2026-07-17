@@ -40,6 +40,7 @@ let expandedRecipe = null;
 /* Kalender-UI */
 let calView = "week";
 let calAnchor = todayISO();
+let expandedCal = null;
 
 /* View-Navigation (Eltern für Zurück-Button) */
 const VIEW_PARENT = { lists: "dashboard", listdetail: "lists", calendar: "dashboard", backlog: "dashboard" };
@@ -577,9 +578,30 @@ function recipeAddSelect(iso) {
   if (!state.recipes.length) return "";
   return `<select data-add-recipe="${iso}" aria-label="Rezept hinzufügen"><option value="">+ Rezept…</option>${state.recipes.map(r => `<option value="${r.id}">${esc(r.title)}</option>`).join("")}</select>`;
 }
+function shortTitle(s) {
+  let t = (s || "").split("#")[0].split("\n")[0].trim();
+  if (t.length > 48) t = t.slice(0, 48).trim() + "…";
+  return t || "Rezept";
+}
 function dayEntriesHTML(iso) {
   return calEntriesOn(iso).map(e => `
-    <span class="cal-chip"><span>${esc(e.meal) || "Rezept"}</span><button type="button" class="cal-chip__x" data-del-cal="${e.id}" aria-label="Entfernen">×</button></span>`).join("");
+    <span class="cal-chip ${e.id === expandedCal ? "is-open" : ""}">
+      <button type="button" class="cal-chip__label" data-cal-toggle="${e.id}">${esc(shortTitle(e.meal))}</button>
+      <button type="button" class="cal-chip__x" data-del-cal="${e.id}" aria-label="Entfernen">×</button>
+    </span>`).join("");
+}
+function calDetailHTML(iso) {
+  const e = calEntriesOn(iso).find(x => x.id === expandedCal);
+  if (!e) return "";
+  const r = e.recipe_id ? state.recipes.find(x => x.id === e.recipe_id) : null;
+  const total = r ? ((r.ingredients || []).reduce((s, ing) => s + (ing.calories || 0), 0) || r.calories || 0) : 0;
+  return `
+    <div class="cal-detail">
+      <p class="cal-detail__title">${esc(e.meal)}</p>
+      ${r && r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="day-card__link">Rezept öffnen ↗</a>` : ""}
+      ${(r && r.ingredients && r.ingredients.length) ? `<ul class="recipe-ings">${r.ingredients.map(ing => `<li><span>${esc(ing.text)}</span>${ing.calories ? `<span class="item__calories">${ing.calories} kcal</span>` : ""}</li>`).join("")}</ul>` : `<p class="recipe-noings">Keine Zutaten hinterlegt.</p>`}
+      ${total ? `<p class="recipe-total-calories">Gesamt: ${total} kcal</p>` : ""}
+    </div>`;
 }
 function dayRowHTML(iso) {
   const d = new Date(iso + "T00:00:00");
@@ -588,6 +610,7 @@ function dayRowHTML(iso) {
       <div class="cal-day-row__date"><span class="cal-dow">${d.toLocaleDateString("de-DE", { weekday: "short" })}</span><span class="cal-dom">${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</span></div>
       <div class="cal-day-row__body">
         <div class="cal-chips">${dayEntriesHTML(iso) || `<span class="cal-empty">—</span>`}</div>
+        ${calDetailHTML(iso)}
         ${recipeAddSelect(iso)}
       </div>
     </div>`;
@@ -599,6 +622,7 @@ function wireCalBody(container) {
     if (r) mutAddCalendarEntry(sel.dataset.addRecipe, r.id, r.title);
   }));
   container.querySelectorAll("[data-del-cal]").forEach(b => b.addEventListener("click", () => mutDeleteCalendarEntry(b.dataset.delCal)));
+  container.querySelectorAll("[data-cal-toggle]").forEach(b => b.addEventListener("click", () => { expandedCal = expandedCal === b.dataset.calToggle ? null : b.dataset.calToggle; renderCalendar(); }));
 }
 function renderCalWeek(body, title) {
   const start = mondayOfISO(calAnchor);
@@ -619,7 +643,7 @@ function renderCalMonth(body, title) {
   for (let i = 0; i < 42; i++) {
     const iso = addDaysISO(gridStart, i), dd = new Date(iso + "T00:00:00"), meals = calEntriesOn(iso);
     html += `<button type="button" class="cal-cell ${dd.getMonth() === anchorMonth ? "" : "is-out"} ${iso === todayISO() ? "is-today" : ""}" data-cal-day="${iso}">
-      <span class="cal-cell__num">${dd.getDate()}</span>${meals.slice(0, 3).map(m => `<span class="cal-cell__meal">${esc(m.meal)}</span>`).join("")}</button>`;
+      <span class="cal-cell__num">${dd.getDate()}</span>${meals.slice(0, 3).map(m => `<span class="cal-cell__meal">${esc(shortTitle(m.meal))}</span>`).join("")}</button>`;
   }
   html += `</div>`; body.innerHTML = html;
   body.querySelectorAll("[data-cal-day]").forEach(c => c.addEventListener("click", () => { calAnchor = c.dataset.calDay; calView = "day"; renderCalendar(); }));
