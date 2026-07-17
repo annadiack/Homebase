@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
 <link rel="manifest" href="manifest.json?v=1">
@@ -25,7 +25,7 @@
 
 <nav class="widget widget--nav" id="topNav">
   <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück">← Übersicht</button>
-  <span class="nav__mark">Plane wie ein Psycho.</span>
+  <span class="nav__mark">Zwei Teller. Ein Plan.</span>
   <span class="sync-badge" id="syncBadge">○ verbinde…</span>
 </nav>
 
@@ -37,7 +37,7 @@
     <div class="widget widget--hero reveal is-visible">
       <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
       <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
-      <p class="lead">Wähle einen Bereich.</p>
+      <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
       <div class="hero-tiles">
         <button type="button" class="hero-tile" data-open-view="lists">
           <span class="hero-tile__icon">🛒</span>
@@ -157,7 +157,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
     <button class="modal-close" id="closeImportModal" type="button" aria-label="Schließen">×</button>
     <h3 id="importTitle">Rezept importieren</h3>
-    <p class="modal-hint">Link von TikTok oder YouTube einfügen. Zutaten dienen nur der Anzeige beim Rezept — sie landen nicht automatisch auf der Einkaufsliste.</p>
+    <p class="modal-hint">Link von TikTok, Instagram oder YouTube einfügen. Zutaten dienen nur der Anzeige beim Rezept — sie landen nicht automatisch auf der Einkaufsliste.</p>
 
     <label class="field-label" for="importUrl">Link</label>
     <div class="field-row">
@@ -174,7 +174,11 @@
       </div>
     </div>
 
-    <label class="field-label" for="importIngredients">Zutaten <span class="field-label__hint">(eine Zeile pro Zutat)</span></label>
+    <div class="field-row">
+      <button type="button" id="autoExtractBtn" class="btn btn--gold btn--small">✨ Zutaten automatisch erkennen</button>
+    </div>
+
+    <label class="field-label" for="importIngredients">Zutaten <span class="field-label__hint">(automatisch erkannt oder eine Zeile pro Zutat)</span></label>
     <textarea id="importIngredients" rows="5" placeholder="1 Zwiebel&#10;400 g Hähnchenbrust&#10;2 EL Sojasauce"></textarea>
 
     <div class="field-row">
@@ -196,7 +200,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
     <button class="modal-close" id="closeReceiptModal" type="button" aria-label="Schließen">×</button>
     <h3 id="receiptTitle">Kassenzettel scannen</h3>
-    <p class="modal-hint">Foto aufnehmen — Zutaten und Kalorien werden automatisch ausgelesen und landen im Backlog.</p>
+    <p class="modal-hint">Foto aufnehmen oder auswählen — Zutaten und Kalorien werden automatisch ausgelesen und landen im Backlog.</p>
     <input type="file" id="receiptFile" accept="image/*" capture="environment" class="receipt-file-input">
     <p class="modal-note" id="receiptNote"></p>
     <div id="receiptResults" class="receipt-results" hidden></div>
@@ -205,7 +209,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=7"></script>
-<script src="script.js?v=7"></script>
+<script src="config.js?v=8"></script>
+<script src="script.js?v=8"></script>
 </body>
 </html>
