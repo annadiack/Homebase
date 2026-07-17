@@ -10,8 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
-<!-- App-Icon (Homebildschirm) & Favicon -->
+<link rel="stylesheet" href="style.css?v=4">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
 <link rel="manifest" href="manifest.json?v=1">
@@ -22,31 +21,27 @@
 </head>
 <body>
 
-<!-- progress bar -->
 <div class="scroll-progress" aria-hidden="true"><div id="scrollBar"></div></div>
 
-<!-- ================= FESTE NAVIGATION ================= -->
 <nav class="widget widget--nav" id="topNav">
-  <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück zur Übersicht">← Übersicht</button>
+  <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück">← Übersicht</button>
   <span class="nav__mark">Zwei Teller. Ein Plan.</span>
   <span class="sync-badge" id="syncBadge">○ verbinde…</span>
 </nav>
 
-<!-- ================= LANDING / ÜBERSICHT ================= -->
+<!-- ================= LANDING ================= -->
 <header class="panel view view--hero is-active" id="view-dashboard">
   <div class="bg" data-speed="0.16"><img src="einkaufsliste-app/assets/hero.jpg" alt=""></div>
   <div class="veil"></div>
-
   <div class="panel__content panel__content--hero">
     <div class="widget widget--hero reveal is-visible">
       <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
       <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
       <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
-
       <div class="hero-tiles">
-        <button type="button" class="hero-tile" data-open-view="list">
+        <button type="button" class="hero-tile" data-open-view="lists">
           <span class="hero-tile__icon">🛒</span>
-          <span class="hero-tile__title">Einkaufsliste</span>
+          <span class="hero-tile__title">Einkaufslisten</span>
           <span class="hero-tile__meta" id="tileListMeta">–</span>
         </button>
         <button type="button" class="hero-tile" data-open-view="calendar">
@@ -64,25 +59,44 @@
   </div>
 </header>
 
-<!-- ================= EINKAUFSLISTE ================= -->
-<section class="panel view" id="view-list">
+<!-- ================= EINKAUFSLISTEN — ÜBERSICHT ================= -->
+<section class="panel view" id="view-lists">
   <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
   <div class="veil"></div>
-
   <div class="panel__content">
     <div class="widget widget--head reveal">
-      <p class="eyebrow">02 — Zum Mitnehmen</p>
-      <h2 class="section__title">Die Einkaufsliste, schreibt sich fast von allein.</h2>
-      <p class="section__desc">Am Ziehpunkt (⠿) verschieben zum Sortieren, Titel antippen zum Umbenennen, nach links wischen löscht Artikel. Häkchen setzen — beide sehen es sofort.</p>
+      <p class="eyebrow">Einkaufslisten</p>
+      <h2 class="section__title">Deine Listen.</h2>
+      <p class="section__desc">Tippe eine Liste an, um sie zu öffnen und zu bearbeiten. Neue Liste unten anlegen.</p>
+      <div class="add-category-row">
+        <input type="text" id="newListInput" placeholder="Neue Liste (z.B. Drogerie)…" aria-label="Neue Liste anlegen">
+        <button type="button" id="addListBtn" class="btn btn--gold btn--small">+ Neue Liste</button>
+      </div>
+    </div>
+    <div class="lists-grid" id="listsGrid"></div>
+  </div>
+</section>
+
+<!-- ================= EINKAUFSLISTE — DETAIL ================= -->
+<section class="panel view" id="view-listdetail">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
+  <div class="veil"></div>
+  <div class="panel__content">
+    <div class="widget widget--head reveal">
+      <p class="eyebrow">Einkaufsliste</p>
+      <h2 class="section__title" id="listDetailTitle">Liste</h2>
+      <p class="section__desc">Ziehpunkt (⠿) zum Sortieren, Titel antippen zum Umbenennen, ✎ zum Bearbeiten, nach links wischen zum Löschen.</p>
       <div class="list-toolbar">
         <div class="add-category-row">
           <input type="text" id="newCategoryInput" placeholder="Neue Kategorie…" aria-label="Neue Kategorie anlegen">
           <button type="button" id="addCategoryBtn" class="btn btn--gold btn--small">+ Kategorie</button>
         </div>
-        <button class="btn btn--outline" id="openReview">Woche abschließen →</button>
+        <button class="btn btn--outline btn--small" id="copyFromLast" hidden>Aus letzter übernehmen</button>
+        <button class="btn btn--outline btn--small" id="toggleHistory" hidden>Historie</button>
+        <button class="btn btn--outline" id="completeList">Liste abschließen ✓</button>
       </div>
+      <div class="history-box" id="historyBox" hidden></div>
     </div>
-
     <div class="list-grid" id="listGrid"></div>
   </div>
 </section>
@@ -91,17 +105,14 @@
 <section class="panel view" id="view-calendar">
   <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
   <div class="veil"></div>
-
   <div class="panel__content">
     <div class="widget widget--head reveal">
       <p class="eyebrow">01 — Der Plan</p>
       <h2 class="section__title">Euer Essensplan.</h2>
-      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Rezepte importieren und einem Tag zuweisen.</p>
+      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Mehrere Rezepte pro Tag möglich. Rezeptkarte antippen zeigt die Zutaten.</p>
       <button class="btn btn--gold" id="openImportModal">+ Rezept importieren</button>
     </div>
-
     <div class="recipe-gallery" id="recipeGallery" hidden></div>
-
     <div class="widget cal-widget reveal">
       <div class="cal-toolbar">
         <div class="cal-nav">
@@ -125,14 +136,12 @@
 <section class="panel view" id="view-backlog">
   <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/closet.jpg" alt=""></div>
   <div class="veil"></div>
-
   <div class="panel__content panel__content--narrow">
     <div class="widget widget--pantry reveal">
       <p class="eyebrow">03 — Schon zuhause</p>
       <h2 class="section__title">Backlog</h2>
-      <p class="section__desc">Kassenzettel abfotografieren — Zutaten und Kalorien werden automatisch erkannt. Beim Wochenabschluss wandern Reste automatisch hierher.</p>
+      <p class="section__desc">Kassenzettel abfotografieren — Zutaten und Kalorien werden automatisch erkannt.</p>
       <button class="btn btn--gold" id="openReceiptModal">📷 Kassenzettel scannen</button>
-
       <div class="backlog-total" id="backlogTotal"></div>
       <div class="pantry-grid" id="pantryGrid"></div>
       <div class="add-row add-row--pantry">
@@ -148,7 +157,7 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
     <button class="modal-close" id="closeImportModal" type="button" aria-label="Schließen">×</button>
     <h3 id="importTitle">Rezept importieren</h3>
-    <p class="modal-hint">Link von TikTok, Instagram oder YouTube einfügen. Titel &amp; Vorschau laden wir automatisch, wo die Plattform es erlaubt.</p>
+    <p class="modal-hint">Link von TikTok, Instagram oder YouTube einfügen. Zutaten dienen nur der Anzeige beim Rezept — sie landen nicht automatisch auf der Einkaufsliste.</p>
 
     <label class="field-label" for="importUrl">Link</label>
     <div class="field-row">
@@ -175,16 +184,8 @@
     <div id="ingredientCalories" class="ingredient-calories"></div>
     <p class="recipe-total-calories" id="recipeTotalCalories" hidden></p>
 
-    <div class="field-row field-row--split">
-      <div>
-        <label class="field-label" for="importCategory">Kategorie</label>
-        <select id="importCategory"></select>
-      </div>
-      <div>
-        <label class="field-label" for="importDay">Tag zuweisen</label>
-        <select id="importDay"></select>
-      </div>
-    </div>
+    <label class="field-label" for="importDay">Einem Tag zuweisen <span class="field-label__hint">(optional)</span></label>
+    <select id="importDay"></select>
 
     <button type="button" class="btn btn--gold btn--block" id="saveImport">Rezept speichern</button>
   </div>
@@ -195,30 +196,16 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
     <button class="modal-close" id="closeReceiptModal" type="button" aria-label="Schließen">×</button>
     <h3 id="receiptTitle">Kassenzettel scannen</h3>
-    <p class="modal-hint">Foto aufnehmen oder auswählen — Zutaten und Kalorien werden automatisch ausgelesen.</p>
-
+    <p class="modal-hint">Foto aufnehmen oder auswählen — Zutaten und Kalorien werden automatisch ausgelesen und landen im Backlog.</p>
     <input type="file" id="receiptFile" accept="image/*" capture="environment" class="receipt-file-input">
     <p class="modal-note" id="receiptNote"></p>
-
     <div id="receiptResults" class="receipt-results" hidden></div>
-
     <button type="button" class="btn btn--gold btn--block" id="saveReceiptItems" hidden>Zum Backlog hinzufügen</button>
   </div>
 </div>
 
-<!-- ================= MODAL: WOCHE ABSCHLIESSEN ================= -->
-<div class="modal-overlay" id="reviewModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
-    <button class="modal-close" id="closeReviewModal" type="button" aria-label="Schließen">×</button>
-    <h3 id="reviewTitle">Woche abschließen</h3>
-    <p class="modal-hint">Was ist von den abgehakten Sachen noch übrig? Der Rest wandert automatisch in euren Backlog.</p>
-    <div id="reviewList" class="review-list"></div>
-    <button type="button" class="btn btn--gold btn--block" id="confirmReview">Bestätigen</button>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=3"></script>
-<script src="script.js?v=3"></script>
+<script src="config.js?v=4"></script>
+<script src="script.js?v=4"></script>
 </body>
 </html>
