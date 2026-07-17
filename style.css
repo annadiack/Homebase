@@ -1,466 +1,213 @@
-/* ==========================================================================
-   TOKENS — Palette direkt aus den Interior-Bildern gezogen:
-   Weiß, Ivory, Greige, Stein, Taupe, Gold (Küchen-Pendelleuchten),
-   Silber (Bad-Armaturen), warmes Nachtschwarz für Text.
-   ========================================================================== */
-:root{
-  --white:     #FFFFFF;
-  --ivory:     #F8F5F0;
-  --greige:    #ECE7DF;
-  --stone:     #D9D2C6;
-  --taupe:     #A79E90;
-  --gold:      #C6A46A;
-  --gold-deep: #A0824B;
-  --silver:    #C9CCD0;
-  --ink:       #1C1B19;
-  --ink-soft:  #55524C;
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Für uns beide — Wochenplan &amp; Einkaufsliste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
 
-  --font-display: "Marcellus", serif;
-  --font-body: "Jost", -apple-system, BlinkMacSystemFont, sans-serif;
+<!-- progress bar -->
+<div class="scroll-progress" aria-hidden="true"><div id="scrollBar"></div></div>
 
-  --radius-lg: 26px;
-  --radius-md: 16px;
-  --radius-sm: 10px;
+<!-- ================= FESTE NAVIGATION ================= -->
+<nav class="widget widget--nav" id="topNav">
+  <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück zur Übersicht">← Übersicht</button>
+  <span class="nav__mark">Zwei Teller. Ein Plan.</span>
+  <span class="sync-badge" id="syncBadge">○ verbinde…</span>
+</nav>
 
-  --shadow-widget: 0 30px 70px rgba(28,27,25,.18), 0 2px 8px rgba(28,27,25,.06);
-  --ease: cubic-bezier(.22,1,.36,1);
-}
+<!-- ================= LANDING / ÜBERSICHT ================= -->
+<header class="panel view view--hero is-active" id="view-dashboard">
+  <div class="bg" data-speed="0.16"><img src="einkaufsliste-app/assets/hero.jpg" alt=""></div>
+  <div class="veil"></div>
 
-*{ box-sizing: border-box; }
-html, body{ margin:0; }
-body{
-  font-family: var(--font-body);
-  font-weight: 400;
-  color: var(--ink);
-  background: var(--ivory);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-h1,h2,h3{ margin:0; font-family: var(--font-display); font-weight: 400; }
-p{ margin:0; }
-a{ color:inherit; text-decoration:none; }
-button{ font-family: var(--font-body); cursor:pointer; }
+  <div class="panel__content panel__content--hero">
+    <div class="widget widget--hero reveal is-visible">
+      <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
+      <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
+      <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
 
-@media (prefers-reduced-motion: reduce){
-  *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
-}
+      <div class="hero-tiles">
+        <button type="button" class="hero-tile" data-open-view="list">
+          <span class="hero-tile__icon">🛒</span>
+          <span class="hero-tile__title">Einkaufsliste</span>
+          <span class="hero-tile__meta" id="tileListMeta">–</span>
+        </button>
+        <button type="button" class="hero-tile" data-open-view="calendar">
+          <span class="hero-tile__icon">📅</span>
+          <span class="hero-tile__title">Kalender &amp; Rezepte</span>
+          <span class="hero-tile__meta" id="tileCalendarMeta">–</span>
+        </button>
+        <button type="button" class="hero-tile" data-open-view="backlog">
+          <span class="hero-tile__icon">🧾</span>
+          <span class="hero-tile__title">Backlog</span>
+          <span class="hero-tile__meta" id="tileBacklogMeta">–</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
 
-/* ==========================================================================
-   SCROLL PROGRESS
-   ========================================================================== */
-.scroll-progress{ position:fixed; top:0; left:0; width:100%; height:2px; z-index:400; }
-#scrollBar{ height:100%; width:0%; background: linear-gradient(90deg, var(--gold), var(--silver)); }
+<!-- ================= EINKAUFSLISTE ================= -->
+<section class="panel view" id="view-list">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
+  <div class="veil"></div>
 
-/* ==========================================================================
-   VIEW-ROUTING — nur ein Panel gleichzeitig sichtbar (Landing + Bereiche)
-   ========================================================================== */
-.view{ display:none; }
-.view.is-active{ display:flex; animation: viewIn .5s var(--ease); }
-@keyframes viewIn{ from{ opacity:0; } to{ opacity:1; } }
+  <div class="panel__content">
+    <div class="widget widget--head reveal">
+      <p class="eyebrow">02 — Zum Mitnehmen</p>
+      <h2 class="section__title">Die Einkaufsliste, schreibt sich fast von allein.</h2>
+      <p class="section__desc">Am Ziehpunkt (⠿) verschieben zum Sortieren, Titel antippen zum Umbenennen, nach links wischen löscht Artikel. Häkchen setzen — beide sehen es sofort.</p>
+      <div class="list-toolbar">
+        <div class="add-category-row">
+          <input type="text" id="newCategoryInput" placeholder="Neue Kategorie…" aria-label="Neue Kategorie anlegen">
+          <button type="button" id="addCategoryBtn" class="btn btn--gold btn--small">+ Kategorie</button>
+        </div>
+        <button class="btn btn--outline" id="openReview">Woche abschließen →</button>
+      </div>
+    </div>
 
-/* ==========================================================================
-   PANELS — Vollbild-Panel mit Bild-Hintergrund.
-   Text liegt NIE direkt auf dem Bild, sondern immer in weißen Widgets.
-   ========================================================================== */
-.panel{
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-  flex-direction: column;
-  justify-content: center;
-  padding: 150px 7vw 100px;
-}
-.panel--footer{ min-height: 60vh; }
+    <div class="list-grid" id="listGrid"></div>
+  </div>
+</section>
 
-.bg{
-  position:absolute; inset: -14% 0;
-  z-index: 0;
-  will-change: transform;
-}
-.bg img{
-  width:100%; height:100%;
-  object-fit: cover;
-  display:block;
-}
-.veil{
-  position:absolute; inset:0; z-index:1; pointer-events:none;
-  background:
-    linear-gradient(to bottom, rgba(248,245,240,.9) 0%, rgba(248,245,240,0) 14%, rgba(248,245,240,0) 86%, rgba(248,245,240,.9) 100%);
-}
+<!-- ================= KALENDER & REZEPTE ================= -->
+<section class="panel view" id="view-calendar">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
+  <div class="veil"></div>
 
-.panel__content{ position:relative; z-index:2; width:100%; max-width: 1240px; margin:0 auto; }
-.panel__content--narrow{ max-width: 760px; }
-.panel__content--hero{ display:flex; align-items:flex-end; min-height: 62vh; }
+  <div class="panel__content">
+    <div class="widget widget--head reveal">
+      <p class="eyebrow">01 — Der Plan</p>
+      <h2 class="section__title">Euer Essensplan.</h2>
+      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Rezepte importieren und einem Tag zuweisen.</p>
+      <button class="btn btn--gold" id="openImportModal">+ Rezept importieren</button>
+    </div>
 
-/* ==========================================================================
-   WIDGETS — opake weiße Karten, schwarze Schrift, vergoldete Oberkante.
-   ========================================================================== */
-.widget{
-  background: var(--white);
-  color: var(--ink);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-widget);
-  border-top: 2px solid var(--gold);
-  padding: 40px 42px;
-}
+    <div class="recipe-gallery" id="recipeGallery" hidden></div>
 
-/* Feste Navigations-Pille oben */
-.widget--nav{
-  position:fixed; top: 24px; left: 7vw; right: 7vw; z-index: 420;
-  display:flex; justify-content: space-between; align-items: center;
-  gap: 14px;
-  padding: 14px 24px;
-  border-radius: 999px;
-}
-.nav__mark{ font-family: var(--font-display); font-size: 15px; letter-spacing: .06em; flex:1; text-align:center; }
-.nav__back{
-  border:none; background:none; color: var(--gold-deep);
-  font-size: 12px; font-weight:500; letter-spacing:.1em; text-transform:uppercase;
-  padding: 4px 2px; white-space:nowrap;
-}
-.nav__back:hover{ color: var(--ink); }
-.sync-badge{ font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--taupe); white-space:nowrap; }
-.sync-badge.is-live{ color: var(--gold-deep); }
+    <div class="widget cal-widget reveal">
+      <div class="cal-toolbar">
+        <div class="cal-nav">
+          <button type="button" id="calPrev" aria-label="Zurück">‹</button>
+          <button type="button" id="calToday">Heute</button>
+          <button type="button" id="calNext" aria-label="Weiter">›</button>
+        </div>
+        <span class="cal-title" id="calTitle"></span>
+        <div class="cal-viewswitch">
+          <button type="button" data-cal-view="day">Tag</button>
+          <button type="button" data-cal-view="week" class="is-active">Woche</button>
+          <button type="button" data-cal-view="month">Monat</button>
+        </div>
+      </div>
+      <div id="calBody" class="cal-body"></div>
+    </div>
+  </div>
+</section>
 
-.widget--hero{ max-width: 660px; }
-.widget--head{ max-width: 660px; margin-bottom: 44px; }
-.widget--hint{ display:inline-block; padding: 10px 20px; border-radius: 999px; margin-top: 18px; }
-.widget--hint p{ font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--taupe); }
+<!-- ================= BACKLOG ================= -->
+<section class="panel view" id="view-backlog">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/closet.jpg" alt=""></div>
+  <div class="veil"></div>
 
-.eyebrow{
-  font-size: 11px; font-weight: 500;
-  letter-spacing: .22em; text-transform: uppercase;
-  color: var(--gold-deep);
-  margin-bottom: 22px;
-}
-.hero__title{
-  font-size: clamp(40px, 5.6vw, 68px);
-  line-height: 1.06;
-  letter-spacing: .005em;
-}
-.hero__title em{ font-style: italic; font-family: var(--font-body); font-weight: 300; }
-.lead{
-  margin-top: 24px; font-size: 17px; font-weight: 300; line-height: 1.65; color: var(--ink-soft);
-}
-.section__title{
-  font-size: clamp(30px, 4vw, 46px);
-  line-height: 1.12;
-}
-.section__desc{ margin-top: 18px; font-size: 15px; font-weight: 300; line-height: 1.65; color: var(--ink-soft); }
+  <div class="panel__content panel__content--narrow">
+    <div class="widget widget--pantry reveal">
+      <p class="eyebrow">03 — Schon zuhause</p>
+      <h2 class="section__title">Backlog</h2>
+      <p class="section__desc">Kassenzettel abfotografieren — Zutaten und Kalorien werden automatisch erkannt. Beim Wochenabschluss wandern Reste automatisch hierher.</p>
+      <button class="btn btn--gold" id="openReceiptModal">📷 Kassenzettel scannen</button>
 
-/* ==========================================================================
-   LANDING — Navigations-Kacheln (im Hero-Widget)
-   ========================================================================== */
-.hero-tiles{
-  margin-top: 34px;
-  display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
-}
-.hero-tile{
-  display:flex; flex-direction:column; align-items:flex-start; gap: 8px;
-  text-align:left;
-  background: var(--ivory);
-  border: 1px solid var(--greige);
-  border-top: 2px solid var(--gold);
-  border-radius: var(--radius-md);
-  padding: 20px 18px;
-  transition: transform .35s var(--ease), box-shadow .35s var(--ease), background .25s var(--ease);
-}
-.hero-tile:hover{ transform: translateY(-5px); background: var(--white); box-shadow: var(--shadow-widget); }
-.hero-tile__icon{ font-size: 24px; }
-.hero-tile__title{ font-family: var(--font-display); font-size: 17px; line-height:1.2; }
-.hero-tile__meta{ font-size: 12px; letter-spacing:.04em; color: var(--taupe); }
+      <div class="backlog-total" id="backlogTotal"></div>
+      <div class="pantry-grid" id="pantryGrid"></div>
+      <div class="add-row add-row--pantry">
+        <input type="text" id="pantryInput" placeholder="Manuell hinzufügen…" aria-label="Zum Backlog hinzufügen">
+        <button type="button" id="pantryAddBtn" aria-label="Hinzufügen">+</button>
+      </div>
+    </div>
+  </div>
+</section>
 
-/* ==========================================================================
-   BUTTONS
-   ========================================================================== */
-.btn{
-  display:inline-block; margin-top: 28px;
-  font-size: 12.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase;
-  padding: 14px 28px; border-radius: 999px; border: none;
-  transition: background .25s var(--ease), color .25s var(--ease), transform .2s var(--ease);
-}
-.btn:active{ transform: scale(.97); }
-.btn--gold{ background: var(--gold); color: var(--white); }
-.btn--gold:hover{ background: var(--gold-deep); }
-.btn--outline{ background: transparent; color: var(--ink); border: 1px solid var(--stone); }
-.btn--outline:hover{ border-color: var(--gold); color: var(--gold-deep); }
-.btn--small{ margin-top: 0; padding: 11px 18px; white-space: nowrap; }
-.btn--block{ display:block; width:100%; text-align:center; }
-.btn:focus-visible, .add-row button:focus-visible{ outline: 2px solid var(--gold); outline-offset: 2px; }
+<!-- ================= MODAL: REZEPT IMPORTIEREN ================= -->
+<div class="modal-overlay" id="importModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <button class="modal-close" id="closeImportModal" type="button" aria-label="Schließen">×</button>
+    <h3 id="importTitle">Rezept importieren</h3>
+    <p class="modal-hint">Link von TikTok, Instagram oder YouTube einfügen. Titel &amp; Vorschau laden wir automatisch, wo die Plattform es erlaubt.</p>
 
-/* ==========================================================================
-   WOCHENPLAN / KALENDER — Tageskarten als weiße Widgets im horizontalen Rail
-   ========================================================================== */
-.day-rail{
-  display:flex; gap: 18px; overflow-x:auto; scroll-snap-type: x proximity;
-  padding: 10px 4px 26px;
-  -ms-overflow-style:none; scrollbar-width:none;
-}
-.day-rail::-webkit-scrollbar{ display:none; }
+    <label class="field-label" for="importUrl">Link</label>
+    <div class="field-row">
+      <input type="url" id="importUrl" placeholder="https://…">
+      <button type="button" id="loadPreview" class="btn btn--outline btn--small">Vorschau laden</button>
+    </div>
+    <p class="modal-note" id="platformNote"></p>
 
-.day-card{
-  scroll-snap-align: start;
-  flex: 0 0 246px;
-  background: var(--white);
-  border-radius: var(--radius-md);
-  border-top: 2px solid var(--gold);
-  box-shadow: var(--shadow-widget);
-  padding: 26px 24px;
-  transition: transform .5s var(--ease), box-shadow .5s var(--ease);
-}
-.day-card:hover{ transform: translateY(-8px); }
-.day-card.is-today{ border-top: 3px solid var(--gold-deep); box-shadow: 0 0 0 2px var(--gold), var(--shadow-widget); }
-.day-card__day{ font-size: 11px; font-weight: 500; letter-spacing:.2em; text-transform:uppercase; color: var(--gold-deep); }
-.day-card__meal{ margin-top: 14px; font-family: var(--font-display); font-size: 20px; line-height: 1.32; min-height: 30px; }
-.day-card__meta{ margin-top: 14px; font-size: 12px; letter-spacing: .06em; color: var(--taupe); }
-.day-card__link{
-  display:inline-block; margin-top: 16px; padding-top: 12px;
-  font-size: 11px; letter-spacing:.12em; text-transform: uppercase;
-  color: var(--gold-deep); border-top: 1px solid var(--greige); width:100%;
-}
-.day-card select{
-  width:100%; margin-top: 14px; font-family: var(--font-body); font-size: 12px; padding: 8px;
-  border-radius: var(--radius-sm); border: 1px solid var(--stone);
-  background: var(--ivory); color: var(--ink);
-}
+    <div class="import-preview" id="importPreview" hidden>
+      <img id="previewThumb" alt="" class="import-preview__thumb">
+      <div class="import-preview__body">
+        <input type="text" id="previewTitle" placeholder="Rezeptname" class="import-preview__title">
+        <span class="platform-tag" id="previewPlatform"></span>
+      </div>
+    </div>
 
-/* ==========================================================================
-   RECIPE GALLERY (importierte Rezepte)
-   ========================================================================== */
-.recipe-gallery{
-  display:flex; gap: 16px; overflow-x:auto; margin: 0 0 30px; padding: 4px 4px 8px;
-  -ms-overflow-style:none; scrollbar-width:none;
-}
-.recipe-gallery::-webkit-scrollbar{ display:none; }
-.recipe-card{
-  flex: 0 0 208px;
-  background: var(--white);
-  border-radius: var(--radius-md);
-  border-top: 2px solid var(--gold);
-  box-shadow: var(--shadow-widget);
-  overflow:hidden;
-}
-.recipe-card__thumb{ width:100%; height:110px; object-fit:cover; display:block; background: var(--greige); }
-.recipe-card__thumb--placeholder{
-  display:flex; align-items:center; justify-content:center;
-  font-size: 10px; letter-spacing:.18em; text-transform:uppercase; color: var(--taupe);
-}
-.recipe-card__body{ padding: 14px 14px 14px; }
-.recipe-card__title{ font-family: var(--font-display); font-size: 15px; line-height:1.35; margin: 10px 0 8px; }
-.platform-tag{
-  font-size: 9.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase;
-  padding: 4px 10px; border-radius: 999px; display:inline-block;
-  border: 1px solid var(--gold); color: var(--gold-deep);
-}
-.recipe-card__remove{
-  width:100%; margin-top: 10px; border:none; border-radius: var(--radius-sm);
-  background: var(--ivory); color: var(--taupe);
-  font-size: 11px; letter-spacing:.1em; text-transform:uppercase; padding: 7px;
-}
-.recipe-card__remove:hover{ color: var(--ink); }
+    <label class="field-label" for="importIngredients">Zutaten <span class="field-label__hint">(eine Zeile pro Zutat)</span></label>
+    <textarea id="importIngredients" rows="5" placeholder="1 Zwiebel&#10;400 g Hähnchenbrust&#10;2 EL Sojasauce"></textarea>
 
-/* ==========================================================================
-   EINKAUFSLISTE — Kategorie-Widgets (Drag & Drop, umbenennen, Swipe-Löschen)
-   ========================================================================== */
-.list-grid{
-  display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-.category-card-row{ overflow:hidden; transition: max-height .2s ease, opacity .2s ease; }
-.category-card{
-  background: var(--white);
-  border-radius: var(--radius-md);
-  border-top: 2px solid var(--gold);
-  box-shadow: var(--shadow-widget);
-  padding: 22px 24px 20px;
-  transition: transform .4s var(--ease), box-shadow .25s var(--ease);
-  cursor: grab;
-}
-.category-card:active{ cursor: grabbing; }
-.category-card.is-dragging{ opacity: .4; }
-.category-card.drag-over{ box-shadow: 0 0 0 2px var(--gold), var(--shadow-widget); }
-.category-card__head{
-  display:flex; align-items:flex-start; justify-content:space-between; gap: 8px;
-  margin-bottom: 14px;
-}
-.category-card__tag{
-  display:inline-block;
-  font-size: 11px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase;
-  padding-bottom: 8px;
-  color: var(--ink);
-  border-bottom: 1px solid var(--gold);
-  outline: none;
-}
-.category-card__tag:focus{ color: var(--gold-deep); }
-.category-card ul{ list-style:none; margin:0; padding:0; }
-.category-card li{ border-bottom: 1px solid var(--greige); }
-.category-card li:last-child{ border-bottom:none; }
+    <div class="field-row">
+      <button type="button" id="estimateCaloriesBtn" class="btn btn--outline btn--small">🔥 Kalorien schätzen</button>
+      <span class="modal-note" id="caloriesNote"></span>
+    </div>
+    <div id="ingredientCalories" class="ingredient-calories"></div>
+    <p class="recipe-total-calories" id="recipeTotalCalories" hidden></p>
 
-.item-row{ overflow:hidden; }
-.item{
-  display:flex; align-items:center; gap: 12px; cursor:pointer; user-select:none;
-  padding: 10px 0; background: var(--white);
-}
-.check{
-  width: 20px; height:20px; flex: 0 0 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--stone);
-  display:flex; align-items:center; justify-content:center;
-  transition: background .2s var(--ease), border-color .2s var(--ease);
-}
-.check svg{ width:11px; height:11px; opacity:0; transition: opacity .15s var(--ease); }
-.item.is-checked .check{ background: var(--gold); border-color: var(--gold); }
-.item.is-checked .check svg{ opacity: 1; }
-.item.is-checked .item__text{ color: var(--taupe); text-decoration: line-through; text-decoration-color: var(--stone); }
-.item__text{ flex:1; font-size: 14.5px; font-weight: 400; letter-spacing: .01em; }
-.item__text small{ color: var(--taupe); font-size: 12px; }
-.item__calories{ font-size: 11px; letter-spacing:.04em; color: var(--gold-deep); white-space:nowrap; }
-.item-delete-btn{
-  border:none; background:none; color: var(--taupe); font-size: 17px; line-height:1;
-  width: 24px; height: 24px; flex-shrink:0; border-radius: 50%;
-}
-.item-delete-btn:hover{ color: var(--gold-deep); background: var(--ivory); }
-.category-delete-btn{ margin-top: -2px; }
+    <div class="field-row field-row--split">
+      <div>
+        <label class="field-label" for="importCategory">Kategorie</label>
+        <select id="importCategory"></select>
+      </div>
+      <div>
+        <label class="field-label" for="importDay">Tag zuweisen</label>
+        <select id="importDay"></select>
+      </div>
+    </div>
 
-.add-row{ display:flex; gap: 8px; margin-top: 16px; }
-.add-row input{
-  flex:1; border: 1px solid var(--stone); border-radius: var(--radius-sm);
-  padding: 10px 13px; font-family: var(--font-body); font-size: 13.5px; color: var(--ink);
-  background: var(--ivory);
-}
-.add-row input:focus{ outline: 2px solid var(--gold); outline-offset: 1px; }
-.add-row button{
-  border:none; background: var(--ink); color: var(--white);
-  width: 38px; border-radius: var(--radius-sm); font-size: 18px; line-height:1;
-}
-.add-row button:hover{ background: var(--gold-deep); }
+    <button type="button" class="btn btn--gold btn--block" id="saveImport">Rezept speichern</button>
+  </div>
+</div>
 
-/* ==========================================================================
-   BACKLOG
-   ========================================================================== */
-.widget--pantry{ text-align:center; }
-.widget--pantry .section__desc{ margin-left:auto; margin-right:auto; max-width: 460px; }
-.backlog-total{
-  display:inline-block; margin-top: 26px;
-  font-size: 11px; letter-spacing:.14em; text-transform:uppercase; color: var(--gold-deep);
-  background: var(--ivory); border: 1px solid var(--greige); border-radius: 999px;
-  padding: 8px 18px;
-}
-.pantry-grid{
-  margin-top: 24px;
-  display:grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
-  gap: 6px 34px;
-  text-align:left;
-}
-.pantry-grid .item-row{ border-bottom: 1px dashed var(--greige); }
-.pantry-grid .item{ padding: 9px 0; }
-.add-row--pantry{ max-width: 420px; margin: 26px auto 0; }
+<!-- ================= MODAL: KASSENZETTEL SCANNEN ================= -->
+<div class="modal-overlay" id="receiptModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
+    <button class="modal-close" id="closeReceiptModal" type="button" aria-label="Schließen">×</button>
+    <h3 id="receiptTitle">Kassenzettel scannen</h3>
+    <p class="modal-hint">Foto aufnehmen oder auswählen — Zutaten und Kalorien werden automatisch ausgelesen.</p>
 
-/* ==========================================================================
-   MODALS
-   ========================================================================== */
-.modal-overlay{
-  position:fixed; inset:0; z-index: 500;
-  background: rgba(28,27,25,.45);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  display:flex; align-items:center; justify-content:center;
-  padding: 24px;
-}
-.modal-overlay[hidden]{ display:none; }
-.modal{
-  position:relative; width:100%; max-width: 480px; max-height: 86vh; overflow-y:auto;
-  background: var(--white); color: var(--ink);
-  border-radius: var(--radius-lg);
-  border-top: 2px solid var(--gold);
-  padding: 38px 34px 32px;
-  box-shadow: 0 60px 120px rgba(0,0,0,.35);
-}
-.modal h3{ font-size: 27px; padding-right: 34px; }
-.modal-hint{ margin-top: 12px; font-size: 14px; font-weight: 300; line-height:1.55; color: var(--ink-soft); }
-.modal-note{ margin-top: 8px; font-size: 12.5px; color: var(--gold-deep); min-height: 16px; }
-.modal-close{
-  position:absolute; top: 20px; right: 20px;
-  width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--greige);
-  background: var(--white); color: var(--ink); font-size: 17px; line-height:1;
-}
-.modal-close:hover{ border-color: var(--gold); color: var(--gold-deep); }
+    <input type="file" id="receiptFile" accept="image/*" capture="environment" class="receipt-file-input">
+    <p class="modal-note" id="receiptNote"></p>
 
-.field-label{
-  display:block; font-size: 10.5px; font-weight: 500;
-  letter-spacing:.18em; text-transform:uppercase; color: var(--taupe);
-  margin: 22px 0 8px;
-}
-.field-label__hint{ text-transform:none; letter-spacing:.01em; font-weight: 300; font-size: 12px; }
-.field-row{ display:flex; gap: 10px; align-items:center; }
-.field-row--split > div{ flex:1; }
-.field-row input, .field-row select, .modal select, .modal textarea, .modal input[type="url"], .modal input[type="text"]{
-  width:100%; font-family: var(--font-body); font-size: 14px; color: var(--ink);
-  padding: 12px 13px; border-radius: var(--radius-sm); border: 1px solid var(--stone);
-  background: var(--ivory);
-}
-.modal textarea{ resize: vertical; line-height: 1.6; }
-.field-row input:focus, .field-row select:focus, .modal textarea:focus, .modal select:focus, .modal input:focus{ outline: 2px solid var(--gold); outline-offset: 1px; }
+    <div id="receiptResults" class="receipt-results" hidden></div>
 
-.import-preview{ display:flex; gap:14px; margin-top:18px; padding: 14px; background: var(--ivory); border-radius: var(--radius-sm); border: 1px solid var(--greige); }
-.import-preview__thumb{ width: 84px; height: 84px; object-fit:cover; border-radius: 10px; background: var(--greige); flex-shrink:0; }
-.import-preview__body{ flex:1; display:flex; flex-direction:column; gap:8px; }
-.import-preview__title{ border:1px solid var(--stone); border-radius: var(--radius-sm); padding: 9px 11px; font-size:14px; font-family: var(--font-body); background: var(--white); }
+    <button type="button" class="btn btn--gold btn--block" id="saveReceiptItems" hidden>Zum Backlog hinzufügen</button>
+  </div>
+</div>
 
-/* Kalorien im Rezept-Modal */
-.ingredient-calories{ margin-top: 10px; display:flex; flex-direction:column; gap: 4px; }
-.ingredient-calories__row{ display:flex; justify-content:space-between; font-size: 13px; padding: 3px 0; border-bottom: 1px solid var(--greige); }
-.ingredient-calories__row span:last-child{ color: var(--gold-deep); font-weight:500; }
-.recipe-total-calories{ margin-top: 12px; font-size: 13px; font-weight:600; letter-spacing:.04em; color: var(--gold-deep); }
+<!-- ================= MODAL: WOCHE ABSCHLIESSEN ================= -->
+<div class="modal-overlay" id="reviewModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+    <button class="modal-close" id="closeReviewModal" type="button" aria-label="Schließen">×</button>
+    <h3 id="reviewTitle">Woche abschließen</h3>
+    <p class="modal-hint">Was ist von den abgehakten Sachen noch übrig? Der Rest wandert automatisch in euren Backlog.</p>
+    <div id="reviewList" class="review-list"></div>
+    <button type="button" class="btn btn--gold btn--block" id="confirmReview">Bestätigen</button>
+  </div>
+</div>
 
-/* Kassenzettel-Modal */
-.receipt-file-input{ width:100%; margin-top: 8px; font-size: 13px; }
-.receipt-results{ margin-top: 18px; display:flex; flex-direction:column; gap: 4px; }
-.receipt-item-row{
-  display:grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; align-items:center;
-  padding: 6px 0; border-bottom: 1px solid var(--greige);
-}
-.receipt-item-row input{
-  border: 1px solid var(--stone); border-radius: var(--radius-sm); padding: 7px 9px;
-  font-family: var(--font-body); font-size: 12.5px; background: var(--ivory); color: var(--ink); width:100%;
-}
-
-/* review list (Woche abschließen) */
-.review-list{ margin-top: 20px; display:flex; flex-direction:column; }
-.review-item{
-  display:grid; grid-template-columns: 1fr auto auto; align-items:center; gap: 14px;
-  padding: 13px 2px; border-bottom: 1px solid var(--greige);
-  cursor:pointer;
-}
-.review-item__text{ font-size: 14.5px; }
-.review-item__text small{ display:block; font-size: 10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--taupe); margin-top:3px; }
-.review-item__caption{ font-size: 10px; color: var(--taupe); letter-spacing:.14em; text-transform:uppercase; }
-
-.switch{ position:relative; display:inline-block; width: 42px; height: 24px; }
-.switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
-.switch__track{ position:absolute; inset:0; background: var(--greige); border-radius: 999px; transition: background .2s var(--ease); }
-.switch__track::before{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background: var(--white); transition: transform .2s var(--ease); box-shadow: 0 1px 4px rgba(28,27,25,.25); }
-.switch input:checked + .switch__track{ background: var(--gold); }
-.switch input:checked + .switch__track::before{ transform: translateX(18px); }
-
-/* ==========================================================================
-   REVEAL
-   ========================================================================== */
-.reveal{ opacity: 0; transform: translateY(34px); transition: opacity .9s var(--ease), transform .9s var(--ease); }
-.reveal.is-visible{ opacity: 1; transform: translateY(0); }
-
-/* ==========================================================================
-   RESPONSIVE
-   ========================================================================== */
-@media (max-width: 720px){
-  .panel{ padding: 120px 5vw 80px; }
-  .widget{ padding: 30px 24px; }
-  .widget--nav{ left: 4vw; right: 4vw; padding: 12px 18px; }
-  .nav__mark{ font-size: 13px; }
-  .sync-badge{ font-size: 10px; }
-  .hero-tiles{ grid-template-columns: 1fr; }
-  .field-row--split{ flex-direction: column; align-items:stretch; }
-  .modal{ padding: 30px 22px 26px; }
-  .panel__content--hero{ align-items: center; }
-  .receipt-item-row{ grid-template-columns: 1fr; }
-}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js?v=3"></script>
+<script src="script.js?v=3"></script>
+</body>
+</html>
