@@ -36,6 +36,7 @@ let currentReceiptItems = null;
 let activeListId = null;
 let showHistory = false;
 let expandedRecipe = null;
+let importMsg = {};
 
 /* Kalender-UI */
 let calView = "week";
@@ -357,6 +358,50 @@ async function callSuggestRecipes(ingredients) {
   });
   if (!res.ok) throw new Error("suggest-recipes " + res.status);
   return res.json();
+}
+async function callSortItems(items, categories) {
+  const res = await fetch(`${FUNCTIONS_BASE}/sort-items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ items, categories }),
+  });
+  if (!res.ok) throw new Error("sort-items " + res.status);
+  return res.json();
+}
+/* Rezept-Zutaten (sortiert) in eine gewählte Liste übernehmen */
+async function mutImportToList(listId, ingredients, assignments) {
+  const norm = s => (s || "").trim().toLowerCase();
+  const catByName = {};
+  catsOfList(listId).forEach(c => { catByName[norm(c.name)] = c; });
+  let order = catsOfList(listId).reduce((m, c) => Math.max(m, c.sort_order || 0), 0);
+  const assignFor = t => { const a = assignments.find(x => norm(x.text) === norm(t)); return a && a.category ? a.category.trim() : "Sonstiges"; };
+
+  if (REMOTE) {
+    const newCats = [];
+    ingredients.forEach(ing => {
+      const name = assignFor(ing.text);
+      if (!catByName[norm(name)] && !newCats.find(c => norm(c.name) === norm(name))) {
+        const c = { id: uid("cat_"), list_id: listId, name, sort_order: ++order };
+        newCats.push(c); catByName[norm(name)] = c;
+      }
+    });
+    if (newCats.length) await sb.from("categories").insert(newCats);
+    const rows = ingredients.map(ing => {
+      const cat = catByName[norm(assignFor(ing.text))];
+      return cat ? { list_id: listId, category: cat.id, text: ing.text, calories: ing.calories ?? null } : null;
+    }).filter(Boolean);
+    if (rows.length) await sb.from("shopping_items").insert(rows);
+    await remoteFetchAll();
+  } else {
+    ingredients.forEach(ing => {
+      const name = assignFor(ing.text);
+      let cat = catByName[norm(name)];
+      if (!cat) { cat = { id: uid("cat_"), list_id: listId, name, sort_order: ++order }; state.categories.push(cat); catByName[norm(name)] = cat; }
+      state.shopping.push({ id: uid("s"), list_id: listId, category: cat.id, text: ing.text, calories: ing.calories ?? null, checked: false });
+    });
+    localSave();
+  }
+  renderAll();
 }
 
 /* ==========================================================================
@@ -732,6 +777,12 @@ function renderRecipeGallery() {
           ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener" class="day-card__link">Rezept öffnen ↗</a>` : ""}
           ${(r.ingredients && r.ingredients.length) ? `<ul class="recipe-ings">${r.ingredients.map(ing => `<li><span>${esc(ing.text)}</span>${ing.calories ? `<span class="item__calories">${ing.calories} kcal</span>` : ""}</li>`).join("")}</ul>` : `<p class="recipe-noings">Noch keine Zutaten.</p><button type="button" class="btn btn--outline btn--small" data-extract-recipe="${r.id}">✨ Zutaten automatisch erkennen</button>`}
           ${total ? `<p class="recipe-total-calories">Gesamt: ${total} kcal</p>` : ""}
+          ${(r.ingredients && r.ingredients.length && activeLists().length) ? `
+            <div class="recipe-import-row">
+              <select data-import-list-for="${r.id}" aria-label="Zielliste wählen">${activeLists().map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select>
+              <button type="button" class="btn btn--gold btn--small" data-import-ings="${r.id}">→ In Liste übernehmen</button>
+            </div>
+            ${importMsg[r.id] ? `<p class="modal-note">${esc(importMsg[r.id])}</p>` : ""}` : ""}
           <button type="button" class="recipe-card__remove" data-delete-recipe="${r.id}">Rezept entfernen</button>
         </div>` : ""}
     </div>`;
@@ -743,6 +794,23 @@ function renderRecipeGallery() {
     b.textContent = "Erkenne Zutaten…"; b.disabled = true;
     try { const result = await callExtractIngredients(r.title || r.url || ""); await mutSetRecipeIngredients(r.id, result.items || []); }
     catch (e) { b.textContent = "Fehlgeschlagen — nochmal tippen"; b.disabled = false; console.warn(e); }
+  }));
+  wrap.querySelectorAll("[data-import-ings]").forEach(b => b.addEventListener("click", async () => {
+    const r = state.recipes.find(x => x.id === b.dataset.importIngs);
+    if (!r || !(r.ingredients && r.ingredients.length)) return;
+    const sel = wrap.querySelector(`[data-import-list-for="${r.id}"]`);
+    const listId = sel ? sel.value : null;
+    if (!listId) return;
+    const listName = (getList(listId) || {}).name || "";
+    importMsg[r.id] = "Sortiere Zutaten ein…"; renderRecipeGallery();
+    try {
+      const texts = r.ingredients.map(i => i.text);
+      let assignments = [];
+      if (FUNCTIONS_BASE) { const result = await callSortItems(texts, catsOfList(listId).map(c => c.name)); assignments = result.assignments || []; }
+      await mutImportToList(listId, r.ingredients, assignments);
+      importMsg[r.id] = `${r.ingredients.length} Zutaten in „${listName}" übernommen.`;
+      renderRecipeGallery();
+    } catch (e) { importMsg[r.id] = "Übernehmen fehlgeschlagen — bitte nochmal."; renderRecipeGallery(); console.warn(e); }
   }));
 }
 
