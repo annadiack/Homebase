@@ -598,7 +598,7 @@ function renderBacklog() {
    ========================================================================== */
 function recipeAddSelect(iso) {
   if (!state.recipes.length) return "";
-  return `<select data-add-recipe="${iso}" aria-label="Rezept hinzufügen"><option value="">+ Rezept…</option>${state.recipes.map(r => `<option value="${r.id}">${esc(r.title)}</option>`).join("")}</select>`;
+  return `<select data-add-recipe="${iso}" aria-label="Rezept hinzufügen"><option value="">+ Rezept…</option>${state.recipes.map(r => `<option value="${r.id}">${esc(shortTitle(r.title))}</option>`).join("")}</select>`;
 }
 function shortTitle(s) {
   // Titel nur bis zum ersten Sonderzeichen / Emoji / Satzende verwenden
