@@ -349,6 +349,15 @@ async function callSortItem(text, categories) {
   if (!res.ok) throw new Error("sort-item " + res.status);
   return res.json();
 }
+async function callSuggestRecipes(ingredients) {
+  const res = await fetch(`${FUNCTIONS_BASE}/suggest-recipes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ ingredients }),
+  });
+  if (!res.ok) throw new Error("suggest-recipes " + res.status);
+  return res.json();
+}
 
 /* ==========================================================================
    SWIPE-TO-DELETE (Touch)
@@ -705,8 +714,9 @@ document.querySelectorAll("[data-cal-view]").forEach(b => b.addEventListener("cl
 /* ---------- Rezept-Galerie (aufklappbar) ---------- */
 function renderRecipeGallery() {
   const wrap = document.getElementById("recipeGallery");
-  if (!state.recipes.length) { wrap.innerHTML = ""; wrap.hidden = true; return; }
-  wrap.hidden = false;
+  const empty = document.getElementById("recipesEmpty");
+  if (!state.recipes.length) { wrap.innerHTML = ""; wrap.hidden = true; if (empty) empty.hidden = false; return; }
+  wrap.hidden = false; if (empty) empty.hidden = true;
   wrap.innerHTML = state.recipes.map(r => {
     const open = expandedRecipe === r.id;
     const total = (r.ingredients || []).reduce((s, ing) => s + (ing.calories || 0), 0) || r.calories || 0;
@@ -985,6 +995,47 @@ document.getElementById("saveReceiptItems").addEventListener("click", async () =
   const commit = () => { const v = input.value.trim(); if (!v) return; input.value = ""; mutAddBacklog(v, null, "", "manual"); };
   document.getElementById("pantryAddBtn").addEventListener("click", commit);
   input.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
+})();
+
+/* ---------- Was kann ich kochen? (Rezeptvorschläge aus vorhandenen Zutaten) ---------- */
+(function initCook() {
+  const input = document.getElementById("cookInput");
+  const btn = document.getElementById("cookBtn");
+  const note = document.getElementById("cookNote");
+  const box = document.getElementById("cookResults");
+  if (!input || !btn) return;
+  let lastSuggestions = [];
+  function render() {
+    box.innerHTML = lastSuggestions.map((r, i) => `
+      <div class="cook-card">
+        <p class="cook-card__title">${esc(r.title)}</p>
+        <p class="cook-card__summary">${esc(r.summary || "")}</p>
+        ${(r.uses && r.uses.length) ? `<p class="cook-card__meta"><b>Nutzt:</b> ${esc(r.uses.join(", "))}</p>` : ""}
+        ${(r.missing && r.missing.length) ? `<p class="cook-card__meta"><b>Fehlt evtl.:</b> ${esc(r.missing.join(", "))}</p>` : ""}
+        <button type="button" class="btn btn--outline btn--small cook-card__save" data-save-suggestion="${i}">+ Als Rezept speichern</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-save-suggestion]").forEach(b => b.addEventListener("click", async () => {
+      const r = lastSuggestions[+b.dataset.saveSuggestion]; if (!r) return;
+      b.textContent = "Gespeichert ✓"; b.disabled = true;
+      const ings = [].concat(r.uses || [], r.missing || []).map(t => ({ text: t, calories: null }));
+      try { await mutAddRecipe({ title: r.title, url: "", platform: "sonstige", thumbnail: "", calories: null }, ings, null); }
+      catch (e) { b.textContent = "+ Als Rezept speichern"; b.disabled = false; console.warn(e); }
+    }));
+  }
+  const run = async () => {
+    const text = input.value.trim();
+    if (!text) { note.textContent = "Bitte ein paar Zutaten eingeben."; return; }
+    if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+    btn.disabled = true; note.textContent = "Suche passende Rezepte…";
+    try {
+      const result = await callSuggestRecipes(text);
+      lastSuggestions = result.recipes || [];
+      note.textContent = lastSuggestions.length ? `${lastSuggestions.length} Vorschläge:` : "Keine Vorschläge gefunden.";
+      render();
+    } catch (e) { note.textContent = "Fehlgeschlagen — prüfe ANTHROPIC_API_KEY in Supabase."; console.warn(e); }
+    finally { btn.disabled = false; }
+  };
+  btn.addEventListener("click", run);
 })();
 
 /* ==========================================================================
