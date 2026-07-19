@@ -340,6 +340,15 @@ async function callExtractIngredients(text) {
   if (!res.ok) throw new Error("extract-ingredients " + res.status);
   return res.json();
 }
+async function callSortItem(text, categories) {
+  const res = await fetch(`${FUNCTIONS_BASE}/sort-item`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ text, categories }),
+  });
+  if (!res.ok) throw new Error("sort-item " + res.status);
+  return res.json();
+}
 
 /* ==========================================================================
    SWIPE-TO-DELETE (Touch)
@@ -765,6 +774,43 @@ function renderSyncBadge(ok) {
     if (h) mutCopyFromList(h.id, activeListId);
   });
   document.getElementById("toggleHistory").addEventListener("click", () => { showHistory = !showHistory; renderListDetail(); });
+})();
+
+/* ---------- Zutat automatisch in die richtige Kategorie einsortieren ---------- */
+(function initQuickSort() {
+  const input = document.getElementById("quickSortInput");
+  const btn = document.getElementById("quickSortBtn");
+  const note = document.getElementById("quickSortNote");
+  if (!input || !btn) return;
+  const commit = async () => {
+    const text = input.value.trim();
+    if (!text) return;
+    if (!activeListId) { note.textContent = "Keine Liste geöffnet."; return; }
+    const cats = catsOfList(activeListId);
+    if (!cats.length) { note.textContent = "Leg zuerst eine Kategorie an."; return; }
+    btn.disabled = true; input.disabled = true; note.textContent = "Sortiere ein…";
+    try {
+      let catId = cats[0].id, catName = cats[0].name;
+      if (FUNCTIONS_BASE) {
+        const result = await callSortItem(text, cats.map(c => c.name));
+        const chosen = (result.category || "").trim();
+        let match = cats.find(c => c.name.trim().toLowerCase() === chosen.toLowerCase());
+        if (!match && chosen) {
+          await mutAddCategory(chosen, activeListId);
+          match = catsOfList(activeListId).find(c => c.name.trim().toLowerCase() === chosen.toLowerCase());
+        }
+        if (match) { catId = match.id; catName = match.name; }
+      }
+      await mutAddShopping(catId, text, activeListId);
+      note.textContent = `„${text}" → ${catName}`;
+      input.value = "";
+    } catch (e) {
+      note.textContent = "Konnte nicht automatisch einsortieren — bitte manuell.";
+      console.warn(e);
+    } finally { btn.disabled = false; input.disabled = false; input.focus(); }
+  };
+  btn.addEventListener("click", commit);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") commit(); });
 })();
 
 /* ==========================================================================
