@@ -185,6 +185,20 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .recipe-card__remove{ border:1px solid var(--stone); border-radius:var(--radius-sm); background:var(--ivory); color:var(--taupe); font-size:11px; letter-spacing:.1em; text-transform:uppercase; padding:8px; }
 .recipe-card__remove:hover{ color:var(--ink); border-color:var(--gold); }
 
+/* WIDGET-ABSTÄNDE + REZEPTE-BEREICH + WAS KOCHEN */
+.panel__content > .widget + .widget{ margin-top:22px; }
+.recipes-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.recipes-title{ font-family:var(--font-display); font-size:24px; }
+.cook-widget textarea{ width:100%; margin:14px 0; border:1px solid var(--stone); border-radius:var(--radius-sm); padding:12px 14px; font-family:var(--font-body); font-size:14px; background:var(--ivory); color:var(--ink); resize:vertical; line-height:1.5; }
+.cook-widget textarea:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.cook-results{ margin-top:16px; display:flex; flex-direction:column; gap:12px; }
+.cook-card{ background:var(--ivory); border:1px solid var(--greige); border-left:3px solid var(--gold); border-radius:var(--radius-sm); padding:14px 16px; }
+.cook-card__title{ font-family:var(--font-display); font-size:17px; }
+.cook-card__summary{ font-size:13.5px; color:var(--ink-soft); margin:4px 0 8px; }
+.cook-card__meta{ font-size:12.5px; color:var(--taupe); }
+.cook-card__meta b{ color:var(--gold-deep); font-weight:500; }
+.cook-card__save{ margin-top:10px; }
+
 /* BACKLOG */
 .widget--pantry{ text-align:center; }
 .widget--pantry .section__desc{ margin-left:auto; margin-right:auto; max-width:460px; }
