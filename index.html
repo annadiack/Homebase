@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
 <link rel="manifest" href="manifest.json?v=1">
@@ -25,7 +25,7 @@
 
 <nav class="widget widget--nav" id="topNav">
   <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück">← Übersicht</button>
-  <span class="nav__mark">Zwei Teller. Ein Plan.</span>
+  <span class="nav__mark">Plane wie ein Psycho.</span>
   <span class="sync-badge" id="syncBadge">○ verbinde…</span>
 </nav>
 
@@ -37,7 +37,7 @@
     <div class="widget widget--hero reveal is-visible">
       <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
       <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
-      <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
+      <p class="lead">Wähle einen Bereich.</p>
       <div class="hero-tiles">
         <button type="button" class="hero-tile" data-open-view="lists">
           <span class="hero-tile__icon">🛒</span>
@@ -114,10 +114,10 @@
     <div class="widget widget--head reveal">
       <p class="eyebrow">01 — Der Plan</p>
       <h2 class="section__title">Euer Essensplan.</h2>
-      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Mehrere Rezepte pro Tag möglich. Rezeptkarte antippen zeigt die Zutaten.</p>
-      <button class="btn btn--gold" id="openImportModal">+ Rezept importieren</button>
+      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Mehrere Rezepte pro Tag möglich.</p>
     </div>
-    <div class="recipe-gallery" id="recipeGallery" hidden></div>
+
+    <!-- Kalender zuerst -->
     <div class="widget cal-widget reveal">
       <div class="cal-toolbar">
         <div class="cal-nav">
@@ -133,6 +133,27 @@
         </div>
       </div>
       <div id="calBody" class="cal-body"></div>
+    </div>
+
+    <!-- Rezepte darunter -->
+    <div class="widget recipes-widget reveal">
+      <div class="recipes-head">
+        <h3 class="recipes-title">Rezepte</h3>
+        <button class="btn btn--gold btn--small" id="openImportModal">+ Rezept importieren</button>
+      </div>
+      <div class="recipe-gallery" id="recipeGallery" hidden></div>
+      <p class="section__desc" id="recipesEmpty" hidden>Noch keine Rezepte — importiere eins oder lass dir unten welche vorschlagen.</p>
+    </div>
+
+    <!-- Was kann ich kochen? -->
+    <div class="widget cook-widget reveal">
+      <p class="eyebrow">Ideen</p>
+      <h3 class="recipes-title">Was kann ich kochen?</h3>
+      <p class="section__desc">Gib ein, welche Zutaten du zuhause hast — du bekommst passende Rezeptvorschläge.</p>
+      <textarea id="cookInput" rows="3" placeholder="z.B. Eier, Reis, Zwiebel, Paprika, Hähnchen"></textarea>
+      <button type="button" class="btn btn--gold" id="cookBtn">🍳 Rezepte vorschlagen</button>
+      <p class="modal-note" id="cookNote"></p>
+      <div class="cook-results" id="cookResults"></div>
     </div>
   </div>
 </section>
@@ -214,147 +235,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=11"></script>
-<script src="script.js?v=11"></script>
-</body>
-</html>    </div>
-    <div class="lists-grid" id="listsGrid"></div>
-  </div>
-</section>
-
-<!-- ================= EINKAUFSLISTE — DETAIL ================= -->
-<section class="panel view" id="view-listdetail">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
-  <div class="veil"></div>
-  <div class="panel__content">
-    <div class="widget widget--head reveal">
-      <p class="eyebrow">Einkaufsliste</p>
-      <h2 class="section__title" id="listDetailTitle">Liste</h2>
-      <p class="section__desc">Ziehpunkt (⠿) zum Sortieren, Titel antippen zum Umbenennen, ✎ zum Bearbeiten, nach links wischen zum Löschen.</p>
-      <div class="list-toolbar">
-        <div class="add-category-row">
-          <input type="text" id="newCategoryInput" placeholder="Neue Kategorie…" aria-label="Neue Kategorie anlegen">
-          <button type="button" id="addCategoryBtn" class="btn btn--gold btn--small">+ Kategorie</button>
-        </div>
-        <button class="btn btn--outline btn--small" id="copyFromLast" hidden>Aus letzter übernehmen</button>
-        <button class="btn btn--outline btn--small" id="toggleHistory" hidden>Historie</button>
-        <button class="btn btn--outline" id="completeList">Liste abschließen ✓</button>
-      </div>
-      <div class="history-box" id="historyBox" hidden></div>
-    </div>
-    <div class="list-grid" id="listGrid"></div>
-  </div>
-</section>
-
-<!-- ================= KALENDER & REZEPTE ================= -->
-<section class="panel view" id="view-calendar">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
-  <div class="veil"></div>
-  <div class="panel__content">
-    <div class="widget widget--head reveal">
-      <p class="eyebrow">01 — Der Plan</p>
-      <h2 class="section__title">Euer Essensplan.</h2>
-      <p class="section__desc">Tages-, Wochen- oder Monatsansicht. Mehrere Rezepte pro Tag möglich. Rezeptkarte antippen zeigt die Zutaten.</p>
-      <button class="btn btn--gold" id="openImportModal">+ Rezept importieren</button>
-    </div>
-    <div class="recipe-gallery" id="recipeGallery" hidden></div>
-    <div class="widget cal-widget reveal">
-      <div class="cal-toolbar">
-        <div class="cal-nav">
-          <button type="button" id="calPrev" aria-label="Zurück">‹</button>
-          <button type="button" id="calToday">Heute</button>
-          <button type="button" id="calNext" aria-label="Weiter">›</button>
-        </div>
-        <span class="cal-title" id="calTitle"></span>
-        <div class="cal-viewswitch">
-          <button type="button" data-cal-view="day">Tag</button>
-          <button type="button" data-cal-view="week" class="is-active">Woche</button>
-          <button type="button" data-cal-view="month">Monat</button>
-        </div>
-      </div>
-      <div id="calBody" class="cal-body"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= BACKLOG ================= -->
-<section class="panel view" id="view-backlog">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/closet.jpg" alt=""></div>
-  <div class="veil"></div>
-  <div class="panel__content panel__content--narrow">
-    <div class="widget widget--pantry reveal">
-      <p class="eyebrow">03 — Schon zuhause</p>
-      <h2 class="section__title">Backlog</h2>
-      <p class="section__desc">Kassenzettel abfotografieren — Zutaten und Kalorien werden automatisch erkannt.</p>
-      <button class="btn btn--gold" id="openReceiptModal">📷 Kassenzettel scannen</button>
-      <div class="backlog-total" id="backlogTotal"></div>
-      <div class="pantry-grid" id="pantryGrid"></div>
-      <div class="add-row add-row--pantry">
-        <input type="text" id="pantryInput" placeholder="Manuell hinzufügen…" aria-label="Zum Backlog hinzufügen">
-        <button type="button" id="pantryAddBtn" aria-label="Hinzufügen">+</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= MODAL: REZEPT IMPORTIEREN ================= -->
-<div class="modal-overlay" id="importModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
-    <button class="modal-close" id="closeImportModal" type="button" aria-label="Schließen">×</button>
-    <h3 id="importTitle">Rezept importieren</h3>
-    <p class="modal-hint">Link von TikTok, Instagram oder YouTube einfügen. Zutaten dienen nur der Anzeige beim Rezept — sie landen nicht automatisch auf der Einkaufsliste.</p>
-
-    <label class="field-label" for="importUrl">Link</label>
-    <div class="field-row">
-      <input type="url" id="importUrl" placeholder="https://…">
-      <button type="button" id="loadPreview" class="btn btn--outline btn--small">Vorschau laden</button>
-    </div>
-    <p class="modal-note" id="platformNote"></p>
-
-    <div class="import-preview" id="importPreview" hidden>
-      <img id="previewThumb" alt="" class="import-preview__thumb">
-      <div class="import-preview__body">
-        <input type="text" id="previewTitle" placeholder="Rezeptname" class="import-preview__title">
-        <span class="platform-tag" id="previewPlatform"></span>
-      </div>
-    </div>
-
-    <div class="field-row">
-      <button type="button" id="autoExtractBtn" class="btn btn--gold btn--small">✨ Zutaten automatisch erkennen</button>
-    </div>
-
-    <label class="field-label" for="importIngredients">Zutaten <span class="field-label__hint">(automatisch erkannt oder eine Zeile pro Zutat)</span></label>
-    <textarea id="importIngredients" rows="5" placeholder="1 Zwiebel&#10;400 g Hähnchenbrust&#10;2 EL Sojasauce"></textarea>
-
-    <div class="field-row">
-      <button type="button" id="estimateCaloriesBtn" class="btn btn--outline btn--small">🔥 Kalorien schätzen</button>
-      <span class="modal-note" id="caloriesNote"></span>
-    </div>
-    <div id="ingredientCalories" class="ingredient-calories"></div>
-    <p class="recipe-total-calories" id="recipeTotalCalories" hidden></p>
-
-    <label class="field-label" for="importDay">Einem Tag zuweisen <span class="field-label__hint">(optional)</span></label>
-    <select id="importDay"></select>
-
-    <button type="button" class="btn btn--gold btn--block" id="saveImport">Rezept speichern</button>
-  </div>
-</div>
-
-<!-- ================= MODAL: KASSENZETTEL SCANNEN ================= -->
-<div class="modal-overlay" id="receiptModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="receiptTitle">
-    <button class="modal-close" id="closeReceiptModal" type="button" aria-label="Schließen">×</button>
-    <h3 id="receiptTitle">Kassenzettel scannen</h3>
-    <p class="modal-hint">Foto aufnehmen oder auswählen — Zutaten und Kalorien werden automatisch ausgelesen und landen im Backlog.</p>
-    <input type="file" id="receiptFile" accept="image/*" capture="environment" class="receipt-file-input">
-    <p class="modal-note" id="receiptNote"></p>
-    <div id="receiptResults" class="receipt-results" hidden></div>
-    <button type="button" class="btn btn--gold btn--block" id="saveReceiptItems" hidden>Zum Backlog hinzufügen</button>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=10"></script>
-<script src="script.js?v=10"></script>
+<script src="config.js?v=12"></script>
+<script src="script.js?v=12"></script>
 </body>
 </html>
