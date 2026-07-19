@@ -198,6 +198,195 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .cook-card__meta{ font-size:12.5px; color:var(--taupe); }
 .cook-card__meta b{ color:var(--gold-deep); font-weight:500; }
 .cook-card__save{ margin-top:10px; }
+.recipe-import-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+.recipe-import-row select{ flex:1; min-width:120px; font-family:var(--font-body); font-size:12.5px; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--stone); background:var(--white); color:var(--ink); }
+
+/* BACKLOG */
+.widget--pantry{ text-align:center; }
+.widget--pantry .section__desc{ margin-left:auto; margin-right:auto; max-width:460px; }
+.backlog-total{ display:inline-block; margin-top:26px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-deep); background:var(--ivory); border:1px solid var(--greige); border-radius:999px; padding:8px 18px; }
+.pantry-grid{ margin-top:24px; display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:6px 34px; text-align:left; }
+.pantry-grid .item-row{ border-bottom:1px dashed var(--greige); }
+.pantry-grid .item{ padding:9px 0; }
+.add-row--pantry{ max-width:420px; margin:26px auto 0; }
+
+/* MODALS */
+.modal-overlay{ position:fixed; inset:0; z-index:500; background:rgba(28,27,25,.45); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; }
+.modal-overlay[hidden]{ display:none; }
+.modal{ position:relative; width:100%; max-width:480px; max-height:86vh; overflow-y:auto; background:var(--white); color:var(--ink); border-radius:var(--radius-lg); border-top:2px solid var(--gold); padding:38px 34px 32px; box-shadow:0 60px 120px rgba(0,0,0,.35); }
+.modal h3{ font-size:27px; padding-right:34px; }
+.modal-hint{ margin-top:12px; font-size:14px; font-weight:300; line-height:1.55; color:var(--ink-soft); }
+.modal-note{ margin-top:8px; font-size:12.5px; color:var(--gold-deep); min-height:16px; }
+.modal-close{ position:absolute; top:20px; right:20px; width:32px; height:32px; border-radius:50%; border:1px solid var(--greige); background:var(--white); color:var(--ink); font-size:17px; line-height:1; }
+.modal-close:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.field-label{ display:block; font-size:10.5px; font-weight:500; letter-spacing:.18em; text-transform:uppercase; color:var(--taupe); margin:22px 0 8px; }
+.field-label__hint{ text-transform:none; letter-spacing:.01em; font-weight:300; font-size:12px; }
+.field-row{ display:flex; gap:10px; align-items:center; }
+.modal input[type="url"], .modal input[type="text"], .modal input[type="number"], .modal select, .modal textarea{ width:100%; font-family:var(--font-body); font-size:14px; color:var(--ink); padding:12px 13px; border-radius:var(--radius-sm); border:1px solid var(--stone); background:var(--ivory); }
+.modal textarea{ resize:vertical; line-height:1.6; }
+.modal input:focus, .modal select:focus, .modal textarea:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.import-preview{ display:flex; gap:14px; margin-top:18px; padding:14px; background:var(--ivory); border-radius:var(--radius-sm); border:1px solid var(--greige); }
+.import-preview__thumb{ width:84px; height:84px; object-fit:cover; border-radius:10px; background:var(--greige); flex-shrink:0; }
+.import-preview__body{ flex:1; display:flex; flex-direction:column; gap:8px; }
+.import-preview__title{ background:var(--white); }
+.ingredient-calories{ margin-top:10px; display:flex; flex-direction:column; gap:4px; }
+.ingredient-calories__row{ display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-bottom:1px solid var(--greige); }
+.ingredient-calories__row span:last-child{ color:var(--gold-deep); font-weight:500; }
+.receipt-file-input{ width:100%; margin-top:8px; font-size:13px; }
+.receipt-results{ margin-top:18px; display:flex; flex-direction:column; gap:4px; }
+.receipt-item-row{ display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--greige); }
+.receipt-item-row input{ padding:7px 9px; font-size:12.5px; }
+
+/* REVEAL */
+.reveal{ opacity:0; transform:translateY(34px); transition:opacity .9s var(--ease), transform .9s var(--ease); }
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+
+/* RESPONSIVE */
+@media (max-width:720px){
+  .panel{ padding:120px 5vw 80px; }
+  .widget{ padding:30px 24px; }
+  .widget--nav{ left:4vw; right:4vw; padding:12px 18px; }
+  .nav__mark{ font-size:13px; }
+  .sync-badge{ font-size:10px; }
+  .hero-tiles{ grid-template-columns:1fr; }
+  .lists-grid{ grid-template-columns:1fr; }
+  .modal{ padding:30px 22px 26px; }
+  .panel__content--hero{ align-items:center; }
+  .receipt-item-row{ grid-template-columns:1fr; }
+  .cal-widget{ padding:20px 16px 22px; }
+  .cal-toolbar{ justify-content:center; }
+  .cal-title{ order:-1; flex-basis:100%; }
+  .cal-cell{ min-height:56px; padding:4px 5px; }
+  .cal-cell__meal{ font-size:9px; }
+  .add-category-row{ flex:1 1 100%; }
+  .add-category-row input{ flex:1; min-width:0; }
+  .recipe-card, .recipe-card.is-open{ flex-basis:100%; max-width:none; }
+}.list-toolbar{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 16px; margin-top:22px; }
+.add-category-row{ display:flex; gap:8px; align-items:center; }
+.add-category-row input{ border:1px solid var(--stone); border-radius:var(--radius-sm); padding:11px 14px; font-family:var(--font-body); font-size:14px; color:var(--ink); background:var(--ivory); min-width:200px; }
+.add-category-row input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+
+/* LISTEN-ÜBERSICHT */
+.lists-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:18px; }
+.list-card{ position:relative; background:var(--white); border-radius:var(--radius-md); border-top:2px solid var(--gold); box-shadow:var(--shadow-widget); padding:24px 22px 20px; display:flex; flex-direction:column; gap:6px; cursor:pointer; transition:transform .3s var(--ease); }
+.list-card:hover{ transform:translateY(-5px); }
+.list-card__icon{ font-size:24px; }
+.list-card__name{ font-family:var(--font-display); font-size:20px; outline:none; }
+.list-card__name:focus{ color:var(--gold-deep); }
+.list-card__meta{ font-size:13px; color:var(--ink-soft); }
+.list-card__hist{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--taupe); margin-top:4px; }
+.list-card__actions{ position:absolute; top:12px; right:12px; display:flex; gap:2px; }
+.list-card__name[contenteditable="true"]{ background:var(--ivory); border-radius:6px; padding:2px 6px; box-shadow:0 0 0 2px var(--gold); cursor:text; }
+
+/* HISTORIE */
+.history-box{ margin-top:18px; background:var(--ivory); border:1px solid var(--greige); border-radius:var(--radius-md); padding:16px 18px; }
+.hist-title{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-deep); margin-bottom:10px; }
+.hist-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--greige); font-size:14px; }
+.hist-row:last-child{ border-bottom:none; }
+
+/* EINKAUFSLISTE — Kategorien */
+.list-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:20px; align-items:start; }
+.category-card-row{ transition:opacity .15s ease; }
+.category-card-row.is-dragging{ opacity:.5; pointer-events:none; }
+.category-card{ background:var(--white); border-radius:var(--radius-md); border-top:2px solid var(--gold); box-shadow:var(--shadow-widget); padding:20px 24px; }
+.category-card__head{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.cat-drag-handle{ border:none; background:none; color:var(--stone); font-size:16px; line-height:1; padding:2px 4px; cursor:grab; touch-action:none; flex-shrink:0; letter-spacing:-2px; }
+.cat-drag-handle:hover{ color:var(--gold-deep); }
+.category-card__tag{ flex:1; font-size:11px; font-weight:500; letter-spacing:.18em; text-transform:uppercase; padding-bottom:8px; color:var(--ink); border-bottom:1px solid var(--gold); outline:none; }
+.category-card__tag:focus{ color:var(--gold-deep); }
+.category-card ul{ list-style:none; margin:0; padding:0; }
+.category-card li{ border-bottom:1px solid var(--greige); }
+.category-card li:last-child{ border-bottom:none; }
+.item-row{ overflow:hidden; }
+.item{ display:flex; align-items:center; gap:10px; user-select:none; padding:10px 0; background:var(--white); }
+.check{ width:20px; height:20px; flex:0 0 20px; border-radius:50%; border:1.5px solid var(--stone); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .2s var(--ease), border-color .2s var(--ease); }
+.check svg{ width:11px; height:11px; opacity:0; transition:opacity .15s var(--ease); }
+.item.is-checked .check{ background:var(--gold); border-color:var(--gold); }
+.item.is-checked .check svg{ opacity:1; }
+.item.is-checked .item__text{ color:var(--taupe); text-decoration:line-through; text-decoration-color:var(--stone); }
+.item__text{ flex:1; font-size:14.5px; font-weight:400; outline:none; }
+.item__text[contenteditable="true"]{ background:var(--ivory); border-radius:4px; padding:2px 5px; box-shadow:0 0 0 2px var(--gold); }
+.item__text small{ color:var(--taupe); font-size:12px; }
+.item__calories{ font-size:11px; letter-spacing:.04em; color:var(--gold-deep); white-space:nowrap; }
+.item-icon-btn{ border:none; background:none; color:var(--taupe); font-size:13px; width:24px; height:24px; flex-shrink:0; border-radius:50%; }
+.item-icon-btn:hover{ color:var(--gold-deep); background:var(--ivory); }
+.item-delete-btn{ border:none; background:none; color:var(--taupe); font-size:17px; line-height:1; width:24px; height:24px; flex-shrink:0; border-radius:50%; }
+.item-delete-btn:hover{ color:var(--gold-deep); background:var(--ivory); }
+.add-row{ display:flex; gap:8px; margin-top:16px; }
+.add-row input{ flex:1; border:1px solid var(--stone); border-radius:var(--radius-sm); padding:10px 13px; font-family:var(--font-body); font-size:13.5px; color:var(--ink); background:var(--ivory); }
+.add-row input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.add-row button{ border:none; background:var(--ink); color:var(--white); width:38px; border-radius:var(--radius-sm); font-size:18px; line-height:1; }
+.add-row button:hover{ background:var(--gold-deep); }
+
+/* KALENDER */
+.cal-widget{ padding:24px 26px 28px; }
+.cal-toolbar{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; }
+.cal-nav{ display:flex; align-items:center; gap:6px; }
+.cal-nav button{ border:1px solid var(--stone); background:var(--white); color:var(--ink); border-radius:999px; padding:7px 14px; font-size:13px; line-height:1; }
+.cal-nav button:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.cal-title{ font-family:var(--font-display); font-size:19px; text-align:center; flex:1 1 auto; min-width:160px; }
+.cal-viewswitch{ display:inline-flex; border:1px solid var(--stone); border-radius:999px; overflow:hidden; }
+.cal-viewswitch button{ border:none; background:var(--white); color:var(--ink-soft); padding:8px 16px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+.cal-viewswitch button.is-active{ background:var(--gold); color:var(--white); }
+.cal-week, .cal-day{ display:flex; flex-direction:column; gap:10px; }
+.cal-day-row{ display:flex; gap:16px; align-items:flex-start; background:var(--ivory); border:1px solid var(--greige); border-radius:var(--radius-md); padding:14px 16px; }
+.cal-day-row.is-today{ border-color:var(--gold); box-shadow:inset 3px 0 0 var(--gold); }
+.cal-day-row__date{ flex:0 0 62px; display:flex; flex-direction:column; }
+.cal-dow{ font-size:11px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-deep); }
+.cal-dom{ font-family:var(--font-display); font-size:18px; }
+.cal-day-row__body{ flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.cal-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.cal-chip{ display:inline-flex; align-items:center; gap:4px; background:var(--white); border:1px solid var(--gold); color:var(--ink); border-radius:999px; padding:4px 6px 4px 12px; font-size:13px; max-width:100%; }
+.cal-chip.is-open{ background:var(--gold); color:var(--white); }
+.cal-chip__label{ border:none; background:none; color:inherit; font:inherit; cursor:pointer; text-align:left; padding:2px 0; max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-chip__x{ border:none; background:none; color:inherit; opacity:.7; font-size:15px; line-height:1; width:18px; height:18px; border-radius:50%; flex-shrink:0; }
+.cal-chip__x:hover{ opacity:1; background:rgba(0,0,0,.08); }
+.cal-empty{ color:var(--taupe); font-size:14px; }
+.cal-detail{ background:var(--white); border:1px solid var(--greige); border-left:3px solid var(--gold); border-radius:var(--radius-sm); padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
+.cal-detail__title{ font-size:13.5px; font-weight:500; line-height:1.4; }
+.cal-day-row__body select{ max-width:280px; font-family:var(--font-body); font-size:12.5px; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--stone); background:var(--white); color:var(--ink); }
+.cal-month__head{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
+.cal-month__head span{ text-align:center; font-size:10.5px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--taupe); }
+.cal-month__grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.cal-cell{ min-height:78px; text-align:left; border:1px solid var(--greige); background:var(--white); border-radius:var(--radius-sm); padding:6px 8px; display:flex; flex-direction:column; gap:3px; overflow:hidden; transition:border-color .2s var(--ease); }
+.cal-cell:hover{ border-color:var(--gold); }
+.cal-cell.is-out{ background:var(--ivory); opacity:.5; }
+.cal-cell.is-today{ border-color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold); }
+.cal-cell__num{ font-size:12px; font-weight:500; color:var(--ink-soft); }
+.cal-cell.is-today .cal-cell__num{ color:var(--gold-deep); font-weight:600; }
+.cal-cell__meal{ font-size:10.5px; line-height:1.2; color:var(--ink); background:var(--ivory); border-left:2px solid var(--gold); border-radius:3px; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* REZEPT-GALERIE (aufklappbar) */
+.recipe-gallery{ display:flex; flex-wrap:wrap; gap:16px; margin:0 0 22px; }
+.recipe-card{ flex:0 0 208px; background:var(--white); border-radius:var(--radius-md); border-top:2px solid var(--gold); box-shadow:var(--shadow-widget); overflow:hidden; align-self:flex-start; }
+.recipe-card.is-open{ flex-basis:100%; max-width:420px; }
+.recipe-card__toggle{ display:block; width:100%; border:none; background:none; padding:0; text-align:left; }
+.recipe-card__thumb{ width:100%; height:120px; object-fit:cover; display:block; background:var(--greige); }
+.recipe-card__thumb--placeholder{ display:flex; align-items:center; justify-content:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--taupe); }
+.recipe-card__title{ display:block; font-family:var(--font-display); font-size:15px; line-height:1.35; padding:12px 14px; }
+.recipe-card__detail{ padding:0 16px 16px; display:flex; flex-direction:column; gap:10px; }
+.platform-tag{ font-size:9.5px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; padding:4px 10px; border-radius:999px; display:inline-block; border:1px solid var(--gold); color:var(--gold-deep); align-self:flex-start; }
+.day-card__link{ font-size:12px; letter-spacing:.06em; color:var(--gold-deep); font-weight:500; }
+.recipe-ings{ list-style:none; margin:0; padding:0; }
+.recipe-ings li{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:5px 0; border-bottom:1px solid var(--greige); }
+.recipe-noings{ font-size:13px; color:var(--taupe); }
+.recipe-total-calories{ font-size:13px; font-weight:600; letter-spacing:.04em; color:var(--gold-deep); }
+.recipe-card__remove{ border:1px solid var(--stone); border-radius:var(--radius-sm); background:var(--ivory); color:var(--taupe); font-size:11px; letter-spacing:.1em; text-transform:uppercase; padding:8px; }
+.recipe-card__remove:hover{ color:var(--ink); border-color:var(--gold); }
+
+/* WIDGET-ABSTÄNDE + REZEPTE-BEREICH + WAS KOCHEN */
+.panel__content > .widget + .widget{ margin-top:22px; }
+.recipes-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.recipes-title{ font-family:var(--font-display); font-size:24px; }
+.cook-widget textarea{ width:100%; margin:14px 0; border:1px solid var(--stone); border-radius:var(--radius-sm); padding:12px 14px; font-family:var(--font-body); font-size:14px; background:var(--ivory); color:var(--ink); resize:vertical; line-height:1.5; }
+.cook-widget textarea:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.cook-results{ margin-top:16px; display:flex; flex-direction:column; gap:12px; }
+.cook-card{ background:var(--ivory); border:1px solid var(--greige); border-left:3px solid var(--gold); border-radius:var(--radius-sm); padding:14px 16px; }
+.cook-card__title{ font-family:var(--font-display); font-size:17px; }
+.cook-card__summary{ font-size:13.5px; color:var(--ink-soft); margin:4px 0 8px; }
+.cook-card__meta{ font-size:12.5px; color:var(--taupe); }
+.cook-card__meta b{ color:var(--gold-deep); font-weight:500; }
+.cook-card__save{ margin-top:10px; }
 
 /* BACKLOG */
 .widget--pantry{ text-align:center; }
