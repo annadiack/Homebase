@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
 <link rel="manifest" href="manifest.json?v=1">
@@ -25,7 +25,7 @@
 
 <nav class="widget widget--nav" id="topNav">
   <button type="button" class="nav__back" id="backBtn" hidden aria-label="Zurück">← Übersicht</button>
-  <span class="nav__mark">Plane wie ein Psycho.</span>
+  <span class="nav__mark">Zwei Teller. Ein Plan.</span>
   <span class="sync-badge" id="syncBadge">○ verbinde…</span>
 </nav>
 
@@ -36,8 +36,8 @@
   <div class="panel__content panel__content--hero">
     <div class="widget widget--hero reveal is-visible">
       <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
-      <h1 class="hero__title">Was steht heute an?</h1>
-      <p class="lead">Wähle einen Bereich.</p>
+      <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
+      <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
       <div class="hero-tiles">
         <button type="button" class="hero-tile" data-open-view="lists">
           <span class="hero-tile__icon">🛒</span>
@@ -53,6 +53,16 @@
           <span class="hero-tile__icon">🧾</span>
           <span class="hero-tile__title">Backlog</span>
           <span class="hero-tile__meta" id="tileBacklogMeta">–</span>
+        </button>
+        <button type="button" class="hero-tile" data-open-view="notes">
+          <span class="hero-tile__icon">📝</span>
+          <span class="hero-tile__title">Notizen</span>
+          <span class="hero-tile__meta" id="tileNotesMeta">–</span>
+        </button>
+        <button type="button" class="hero-tile" data-open-view="guide">
+          <span class="hero-tile__icon">🧊</span>
+          <span class="hero-tile__title">Lager-Guide</span>
+          <span class="hero-tile__meta">Tipps zur Lagerung</span>
         </button>
       </div>
     </div>
@@ -178,6 +188,89 @@
   </div>
 </section>
 
+<!-- ================= NOTIZEN ================= -->
+<section class="panel view" id="view-notes">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/bath.jpg" alt=""></div>
+  <div class="veil"></div>
+  <div class="panel__content">
+    <div class="widget widget--head reveal">
+      <p class="eyebrow">Notizen</p>
+      <h2 class="section__title">Notizen.</h2>
+      <p class="section__desc">Schnelle Notizen für euch beide — durchsuchbar und in Echtzeit synchron.</p>
+      <div class="list-toolbar">
+        <div class="add-category-row">
+          <input type="search" id="noteSearch" placeholder="Notizen durchsuchen…" aria-label="Notizen durchsuchen">
+        </div>
+        <button type="button" id="addNoteBtn" class="btn btn--gold btn--small">+ Neue Notiz</button>
+      </div>
+    </div>
+    <div class="notes-grid" id="notesGrid"></div>
+  </div>
+</section>
+
+<!-- ================= LAGER-GUIDE ================= -->
+<section class="panel view" id="view-guide">
+  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
+  <div class="veil"></div>
+  <div class="panel__content panel__content--narrow">
+    <div class="widget reveal">
+      <p class="eyebrow">Lager-Guide</p>
+      <h2 class="section__title">Richtig lagern.</h2>
+      <p class="section__desc">Wie du Lebensmittel frisch hältst und den Kühlschrank clever einräumst.</p>
+
+      <details class="guide-item" open>
+        <summary>🧊 Kühlschrank richtig einräumen</summary>
+        <div class="guide-body">
+          <p><b>Oberes Fach (ca. 8 °C):</b> Reste, geöffnete Lebensmittel, Getränke, Marmelade.</p>
+          <p><b>Mittleres Fach (ca. 5 °C):</b> Milchprodukte, Käse, Joghurt.</p>
+          <p><b>Unterstes Fach über dem Gemüsefach (am kältesten, ca. 2 °C):</b> Fleisch, Fisch, Wurst.</p>
+          <p><b>Gemüsefach:</b> Obst und Gemüse — möglichst getrennt (siehe unten).</p>
+          <p><b>Tür (am wärmsten):</b> Butter, Eier, Saucen, Dressings, Getränke.</p>
+        </div>
+      </details>
+
+      <details class="guide-item">
+        <summary>🍎 Was NICHT zusammen lagern</summary>
+        <div class="guide-body">
+          <p>Manche Früchte geben das Reifegas <b>Ethylen</b> ab und lassen anderes schneller verderben.</p>
+          <p><b>Ethylen-Abgeber (getrennt halten):</b> Äpfel, Bananen, Tomaten, Avocados, Birnen, Pfirsiche.</p>
+          <p><b>Empfindlich (fernhalten):</b> Blattsalat, Gurke, Brokkoli, Karotten, Kiwi, Beeren.</p>
+          <p><b>Kartoffeln &amp; Zwiebeln getrennt</b> lagern — zusammen keimen und faulen sie schneller.</p>
+        </div>
+      </details>
+
+      <details class="guide-item">
+        <summary>🌡️ Gehört NICHT in den Kühlschrank</summary>
+        <div class="guide-body">
+          <p><b>Kühl &amp; dunkel, aber nicht im Kühlschrank:</b> Tomaten, Kartoffeln, Zwiebeln, Knoblauch, Kürbis.</p>
+          <p><b>Bei Zimmertemperatur:</b> Bananen, Avocados (bis reif), Zitrusfrüchte, Brot, Honig, Basilikum.</p>
+          <p>Brot am besten im Brotkasten — im Kühlschrank wird es schneller altbacken.</p>
+        </div>
+      </details>
+
+      <details class="guide-item">
+        <summary>🥫 Vorratsschrank</summary>
+        <div class="guide-body">
+          <p>Kühl, dunkel und trocken: Nudeln, Reis, Mehl, Konserven, Öl.</p>
+          <p>Kartoffeln luftig und dunkel (nicht neben Zwiebeln), sonst werden sie grün oder keimen.</p>
+          <p>Angebrochene Packungen luftdicht verschließen — hält länger und schützt vor Motten.</p>
+        </div>
+      </details>
+
+      <details class="guide-item">
+        <summary>❄️ Einfrieren — kurz &amp; gut</summary>
+        <div class="guide-body">
+          <p>Portionsweise einfrieren und mit Datum beschriften.</p>
+          <p>Gut geeignet: Brot, Fleisch, Beeren, gekochte Reste, Kräuter (in Öl).</p>
+          <p>Weniger geeignet: wasserreiches Gemüse roh (Salat, Gurke), gekochte Kartoffeln.</p>
+        </div>
+      </details>
+
+      <p class="guide-note">Allgemeine Empfehlungen — im Zweifel die Hinweise auf der Verpackung beachten.</p>
+    </div>
+  </div>
+</section>
+
 <!-- ================= MODAL: REZEPT IMPORTIEREN ================= -->
 <div class="modal-overlay" id="importModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
@@ -235,7 +328,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=13"></script>
-<script src="script.js?v=13"></script>
+<script src="config.js?v=14"></script>
+<script src="script.js?v=14"></script>
 </body>
 </html>
