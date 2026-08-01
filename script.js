@@ -1291,22 +1291,74 @@ function renderProspekte() {
   grid.innerHTML = data.maerkte.map(m => `<a class="prospekt-card" href="${m.url}" target="_blank" rel="noopener"><span class="prospekt-card__name">${esc(m.name)}</span><span class="prospekt-card__go">Prospekt ansehen ↗</span></a>`).join("");
   if (aggr) aggr.innerHTML = data.aggregatoren.map(m => `<a class="prospekt-link" href="${m.url}" target="_blank" rel="noopener">${esc(m.name)} ↗</a>`).join("");
 }
-document.querySelectorAll("[data-land]").forEach(b => b.addEventListener("click", () => { prospekteLand = b.dataset.land; localStorage.setItem("homebase_prospekte_land", prospekteLand); renderProspekte(); }));
+document.querySelectorAll("[data-land]").forEach(b => b.addEventListener("click", () => {
+  prospekteLand = b.dataset.land; localStorage.setItem("homebase_prospekte_land", prospekteLand); renderProspekte();
+  const input = document.getElementById("angebotInput");
+  if (input && input.value.trim()) renderOfferResults(input.value);
+}));
+
+/* ---- Angebotssuche pro Anbieter + Merkliste (gerätelokal) ---- */
+const OFFER_WATCH_KEY = "homebase_watch_offers";
+function getWatch() { try { return JSON.parse(localStorage.getItem(OFFER_WATCH_KEY) || "[]"); } catch (e) { return []; } }
+function saveWatch(arr) { localStorage.setItem(OFFER_WATCH_KEY, JSON.stringify(arr)); }
+function offerProviders(q) {
+  const g = prospekteLand === "ch" ? "https://www.google.ch/search?q=" : "https://www.google.de/search?q=";
+  const e = s => encodeURIComponent(s);
+  if (prospekteLand === "ch") {
+    return [
+      { label: "Marktguru", url: g + e("site:marktguru.ch " + q + " angebot") },
+      { label: "Profital", url: g + e("site:profital.ch " + q) },
+      { label: "Google Angebote", url: g + e(q + " angebot prospekt schweiz") },
+    ];
+  }
+  return [
+    { label: "Marktguru", url: g + e("site:marktguru.de " + q + " angebot") },
+    { label: "kaufDA", url: g + e("site:kaufda.de " + q + " angebot") },
+    { label: "Google Angebote", url: g + e(q + " angebot prospekt supermarkt") },
+  ];
+}
+function renderOfferResults(q) {
+  const box = document.getElementById("angebotResults");
+  if (!box) return;
+  q = (q || "").trim();
+  if (!q) { box.hidden = true; box.innerHTML = ""; return; }
+  const links = offerProviders(q).map(p => `<a href="${p.url}" target="_blank" rel="noopener noreferrer">${esc(p.label)} ↗</a>`).join("");
+  box.hidden = false;
+  box.innerHTML = `<span class="ar-label">Angebote für „${esc(q)}" öffnen:</span>` + links;
+}
+function renderOfferWatch() {
+  const box = document.getElementById("angebotWatch");
+  if (!box) return;
+  const arr = getWatch();
+  if (!arr.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<span class="ar-label">Beobachtete Zutaten (auf diesem Gerät):</span>` + arr.map((q, i) =>
+    `<span class="watch-chip"><span class="wc-name" data-watch-idx="${i}">${esc(q)}</span><button type="button" data-watch-del="${i}" aria-label="Entfernen">×</button></span>`
+  ).join("");
+  box.querySelectorAll("[data-watch-idx]").forEach(el => el.addEventListener("click", () => {
+    const q = getWatch()[+el.dataset.watchIdx]; if (q == null) return;
+    const input = document.getElementById("angebotInput"); if (input) input.value = q;
+    renderOfferResults(q);
+  }));
+  box.querySelectorAll("[data-watch-del]").forEach(el => el.addEventListener("click", () => {
+    const arr2 = getWatch(); arr2.splice(+el.dataset.watchDel, 1); saveWatch(arr2); renderOfferWatch();
+  }));
+}
 (function initAngebotSearch() {
   const input = document.getElementById("angebotInput");
   const btn = document.getElementById("angebotBtn");
+  const watchBtn = document.getElementById("angebotWatchBtn");
   if (!input || !btn) return;
-  const go = () => {
-    const q = input.value.trim();
-    if (!q) return;
-    const region = prospekteLand === "ch" ? "google.ch" : "google.de";
-    const url = "https://www." + region + "/search?q=" + encodeURIComponent(q + " angebot prospekt supermarkt");
-    const a = document.createElement("a");
-    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
-    document.body.appendChild(a); a.click(); a.remove();
+  const search = () => { const q = input.value.trim(); if (!q) return; renderOfferResults(q); };
+  const remember = () => {
+    const q = input.value.trim(); if (!q) return;
+    const arr = getWatch();
+    if (!arr.some(x => x.toLowerCase() === q.toLowerCase())) { arr.push(q); saveWatch(arr); }
+    renderOfferWatch(); renderOfferResults(q);
   };
-  btn.addEventListener("click", go);
-  input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  btn.addEventListener("click", search);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") search(); });
+  if (watchBtn) watchBtn.addEventListener("click", remember);
+  renderOfferWatch();
 })();
 
 /* ==========================================================================
@@ -1349,19 +1401,35 @@ async function upsertMyLocation(lat, lng, sharing) {
   const p = getPerson();
   try { await sb.from("locations").upsert({ id: p.id, name: p.name || "Ich", lat, lng, sharing, updated_at: new Date().toISOString() }); } catch (e) { console.warn(e); }
 }
+function geoErrMsg(err) {
+  if (err && err.code === 1) return "Standort-Freigabe ist blockiert. iPhone: Einstellungen → Datenschutz & Sicherheit → Ortungsdienste einschalten und für Safari die Option 'Beim Verwenden der App' wählen. Danach die Seite neu laden.";
+  if (err && err.code === 2) return "Position gerade nicht ermittelbar (kein GPS/WLAN-Signal). Kurz warten oder ins Freie gehen.";
+  if (err && err.code === 3) return "Die Standort-Suche hat zu lange gedauert — bitte den Schalter nochmal aus- und einschalten.";
+  return "Standort nicht verfügbar — bitte die Freigabe erlauben.";
+}
 function startSharing() {
   const note = document.getElementById("standortNote");
   if (!navigator.geolocation) { if (note) note.textContent = "Dein Browser unterstützt keinen Standort."; return; }
+  const isStandalone = (window.navigator.standalone === true) || matchMedia("(display-mode: standalone)").matches;
+  if (note) note.textContent = "Standort wird ermittelt … bitte die Freigabe erlauben." + (isStandalone ? " Falls nichts passiert: HomeBase direkt in Safari öffnen (nicht über das Home-Bildschirm-Symbol)." : "");
+  const push = (pos, msg) => {
+    const now = Date.now();
+    if (now - lastLocPush < 12000) return;
+    lastLocPush = now;
+    upsertMyLocation(pos.coords.latitude, pos.coords.longitude, true);
+    if (note) note.textContent = msg;
+  };
+  // Sofort-Fix (schnell, ungenau erlaubt) — löst zugleich den Berechtigungsdialog aus
+  navigator.geolocation.getCurrentPosition(
+    pos => push(pos, "Du teilst deinen Standort."),
+    err => { if (note) note.textContent = geoErrMsg(err); },
+    { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 }
+  );
+  // Laufende, genauere Updates
   watchId = navigator.geolocation.watchPosition(
-    pos => {
-      const now = Date.now();
-      if (now - lastLocPush < 12000) return;
-      lastLocPush = now;
-      upsertMyLocation(pos.coords.latitude, pos.coords.longitude, true);
-      if (note) note.textContent = "Du teilst deinen Standort (aktualisiert alle paar Sekunden).";
-    },
-    () => { if (note) note.textContent = "Standort nicht verfügbar — bitte die Freigabe erlauben."; },
-    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    pos => push(pos, "Du teilst deinen Standort (aktualisiert alle paar Sekunden)."),
+    err => { if (note) note.textContent = geoErrMsg(err); },
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 25000 }
   );
 }
 function stopSharing() {
