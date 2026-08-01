@@ -121,6 +121,10 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .item__calories{ font-size:11px; letter-spacing:.04em; color:var(--gold-deep); white-space:nowrap; }
 .item-icon-btn{ border:none; background:none; color:var(--taupe); font-size:13px; width:24px; height:24px; flex-shrink:0; border-radius:50%; }
 .item-icon-btn:hover{ color:var(--gold-deep); background:var(--ivory); }
+.item-flag{ font-size:17px; width:30px; height:30px; color:var(--stone); }
+.item-flag.is-on{ color:var(--gold-deep); background:var(--ivory); }
+.item.is-flagged{ background:linear-gradient(90deg, rgba(198,164,106,.20), rgba(198,164,106,0) 70%); border-left:3px solid var(--gold); padding-left:8px; border-radius:6px; }
+.item.is-flagged .item__text{ font-weight:600; color:var(--ink); }
 .item-delete-btn{ border:none; background:none; color:var(--taupe); font-size:17px; line-height:1; width:24px; height:24px; flex-shrink:0; border-radius:50%; }
 .item-delete-btn:hover{ color:var(--gold-deep); background:var(--ivory); }
 .add-row{ display:flex; gap:8px; margin-top:16px; }
@@ -228,6 +232,26 @@ button{ font-family:var(--font-body); cursor:pointer; }
 .guide-body p{ font-size:14px; line-height:1.6; color:var(--ink-soft); margin-top:10px; }
 .guide-body p b{ color:var(--ink); font-weight:500; }
 .guide-note{ margin-top:18px; font-size:12px; color:var(--taupe); font-style:italic; }
+
+/* PROSPEKTE */
+.prospekt-land{ margin-top:8px; }
+.prospekt-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:14px; margin:22px 0; }
+.prospekt-card{ display:flex; flex-direction:column; gap:8px; background:var(--white); border-radius:var(--radius-md); border-top:2px solid var(--gold); box-shadow:var(--shadow-widget); padding:20px 18px; transition:transform .25s var(--ease); }
+.prospekt-card:hover{ transform:translateY(-4px); }
+.prospekt-card__name{ font-family:var(--font-display); font-size:19px; }
+.prospekt-card__go{ font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold-deep); }
+.prospekt-links{ display:flex; flex-direction:column; gap:2px; margin-top:14px; }
+.prospekt-link{ display:inline-block; font-size:14.5px; color:var(--gold-deep); font-weight:500; padding:10px 0; border-bottom:1px solid var(--greige); }
+.prospekt-link:last-child{ border-bottom:none; }
+.prospekt-link:hover{ color:var(--ink); }
+
+/* STANDORT */
+.standort-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:20px; }
+.standort-controls input{ border:1px solid var(--stone); border-radius:var(--radius-sm); padding:11px 14px; font-family:var(--font-body); font-size:14px; color:var(--ink); background:var(--ivory); min-width:180px; }
+.standort-controls input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.share-toggle{ display:inline-flex; align-items:center; gap:10px; font-size:14px; cursor:pointer; }
+.standort-map{ width:100%; height:58vh; min-height:340px; margin-top:22px; border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-widget); border:1px solid var(--greige); z-index:0; }
+.leaflet-container{ font-family:var(--font-body); background:var(--greige); }
 
 /* BACKLOG */
 .widget--pantry{ text-align:center; }
