@@ -613,7 +613,7 @@ function renderListDetail() {
 
   const cats = catsOfList(activeListId);
   grid.innerHTML = cats.map(cat => {
-    const items = itemsOfCat(cat.id).slice().sort((a, b) => (b.flagged ? 1 : 0) - (a.flagged ? 1 : 0));
+    const items = itemsOfCat(cat.id);
     return `
     <div class="category-card-row" data-cat-row="${cat.id}">
       <div class="category-card reveal is-visible" data-cat="${cat.id}">
@@ -629,7 +629,7 @@ function renderListDetail() {
                 <span class="check" data-check="${it.id}">${checkIconSVG()}</span>
                 <span class="item__text" data-text="${it.id}">${esc(it.text)}</span>
                 ${calBadge(it.calories)}
-                <button type="button" class="item-icon-btn item-flag ${it.flagged ? "is-on" : ""}" data-flag="${it.id}" aria-label="Wichtig markieren">⚑</button>
+                <button type="button" class="item-icon-btn item-flag ${it.flagged ? "is-on" : ""}" data-flag="${it.id}" aria-label="Zum Prüfen markieren" title="Zum Prüfen markieren – zuhause nachschauen, ob neue nötig">${it.flagged ? "⚑" : "⚐"}</button>
                 <button type="button" class="item-icon-btn" data-edit="${it.id}" aria-label="Bearbeiten">✎</button>
                 <button type="button" class="item-delete-btn" data-delete-shopping="${it.id}" aria-label="Löschen">×</button>
               </div>
@@ -672,6 +672,7 @@ function renderListDetail() {
     const it = state.shopping.find(i => String(i.id) === btn.dataset.flag); if (!it) return;
     it.flagged = !it.flagged;
     btn.classList.toggle("is-on", it.flagged);
+    btn.textContent = it.flagged ? "⚑" : "⚐";
     const item = btn.closest(".item"); if (item) item.classList.toggle("is-flagged", it.flagged);
     mutToggleFlag(it.id, it.flagged);
   }));
