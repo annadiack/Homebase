@@ -1381,6 +1381,7 @@ function initMap() {
   }
   setTimeout(() => { try { leafletMap.invalidateSize(); } catch (e) {} }, 120);
   renderLocationMarkers();
+  ensureMarkets();
 }
 function renderLocationMarkers() {
   if (!leafletMap || typeof L === "undefined") return;
@@ -1459,6 +1460,129 @@ function stopSharing() {
 })();
 
 /* ==========================================================================
+   SUPERMÄRKTE IN DER NÄHE (OpenStreetMap / Overpass)
+   ========================================================================== */
+let marketMarkers = [], marketsLoaded = false;
+function clearMarketMarkers() {
+  if (leafletMap) marketMarkers.forEach(m => { try { leafletMap.removeLayer(m); } catch (e) {} });
+  marketMarkers = [];
+}
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371000, toR = x => x * Math.PI / 180;
+  const dLa = toR(la2 - la1), dLo = toR(lo2 - lo1);
+  const a = Math.sin(dLa / 2) ** 2 + Math.cos(toR(la1)) * Math.cos(toR(la2)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function fmtDist(m) { return m < 1000 ? (Math.round(m / 10) * 10) + " m" : (m / 1000).toFixed(1).replace(".", ",") + " km"; }
+async function loadNearbyMarkets(lat, lng) {
+  const listEl = document.getElementById("marketsList");
+  const noteEl = document.getElementById("marketsNote");
+  if (noteEl) noteEl.textContent = "Supermärkte werden gesucht…";
+  const q = '[out:json][timeout:20];(node["shop"="supermarket"](around:2500,' + lat + ',' + lng + ');way["shop"="supermarket"](around:2500,' + lat + ',' + lng + '););out center 25;';
+  try {
+    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q));
+    const j = await r.json();
+    const items = (j.elements || []).map(el => {
+      const la = el.lat != null ? el.lat : (el.center && el.center.lat);
+      const lo = el.lon != null ? el.lon : (el.center && el.center.lon);
+      if (la == null || lo == null) return null;
+      const name = (el.tags && (el.tags.name || el.tags.brand)) || "Supermarkt";
+      return { name, lat: la, lng: lo, dist: haversine(lat, lng, la, lo) };
+    }).filter(Boolean);
+    items.sort((a, b) => a.dist - b.dist);
+    const top = items.slice(0, 6);
+    clearMarketMarkers();
+    if (leafletMap && typeof L !== "undefined") {
+      top.forEach(m => {
+        const mk = L.circleMarker([m.lat, m.lng], { radius: 7, color: "#F6D9AC", weight: 2, fillColor: "#E5B074", fillOpacity: .9 })
+          .addTo(leafletMap).bindPopup(esc(m.name) + " · " + fmtDist(m.dist));
+        marketMarkers.push(mk);
+      });
+    }
+    if (listEl) listEl.innerHTML = top.map(m =>
+      `<div class="market-row"><span class="market-row__name"><span class="pin">📍</span><span>${esc(m.name)}</span></span><span class="market-row__dist">${fmtDist(m.dist)}</span></div>`
+    ).join("");
+    if (noteEl) noteEl.textContent = top.length ? "Quelle: OpenStreetMap · Entfernung als Luftlinie." : "Keine Supermärkte im Umkreis von 2,5 km gefunden.";
+  } catch (e) {
+    if (noteEl) noteEl.textContent = "Supermärkte konnten nicht geladen werden.";
+  }
+}
+function ensureMarkets() {
+  if (marketsLoaded) return;
+  const go = (lat, lng) => { marketsLoaded = true; loadNearbyMarkets(lat, lng); };
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("homebase_wx_coords") || "null"); } catch (e) {}
+  if (cached && cached.lat != null) { go(cached.lat, cached.lng); return; }
+  const noteEl = document.getElementById("marketsNote");
+  if (navigator.geolocation) {
+    if (noteEl) noteEl.textContent = "Standort wird ermittelt…";
+    navigator.geolocation.getCurrentPosition(
+      pos => { const c = { lat: pos.coords.latitude, lng: pos.coords.longitude }; localStorage.setItem("homebase_wx_coords", JSON.stringify(c)); go(c.lat, c.lng); },
+      () => { if (noteEl) noteEl.textContent = "Für Supermärkte in der Nähe bitte den Standort freigeben."; },
+      { enableHighAccuracy: false, maximumAge: 1800000, timeout: 15000 }
+    );
+  } else if (noteEl) { noteEl.textContent = "Standort wird von diesem Browser nicht unterstützt."; }
+}
+
+/* ==========================================================================
+   MINI-KARTE (Dashboard) — Leuchtroute zum nächsten Supermarkt
+   ========================================================================== */
+let homeMiniMap = null, homeMapLoaded = false;
+async function buildHomeMap(lat, lng) {
+  const el = document.getElementById("homeMiniMap");
+  const label = document.getElementById("homeMapLabel");
+  if (!el || typeof L === "undefined") return;
+  if (!homeMiniMap) {
+    homeMiniMap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false }).setView([lat, lng], 14);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(homeMiniMap);
+  }
+  setTimeout(() => { try { homeMiniMap.invalidateSize(); } catch (e) {} }, 140);
+  L.circleMarker([lat, lng], { radius: 6, color: "#9CCBFF", weight: 2, fillColor: "#4C9BFF", fillOpacity: .95, className: "mk-glow-blue" }).addTo(homeMiniMap);
+  try {
+    const q = '[out:json][timeout:20];(node["shop"="supermarket"](around:3000,' + lat + ',' + lng + ');way["shop"="supermarket"](around:3000,' + lat + ',' + lng + '););out center 20;';
+    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q));
+    const j = await r.json();
+    const items = (j.elements || []).map(e2 => {
+      const la = e2.lat != null ? e2.lat : (e2.center && e2.center.lat);
+      const lo = e2.lon != null ? e2.lon : (e2.center && e2.center.lon);
+      if (la == null || lo == null) return null;
+      const name = (e2.tags && (e2.tags.name || e2.tags.brand)) || "Supermarkt";
+      return { name, lat: la, lng: lo, dist: haversine(lat, lng, la, lo) };
+    }).filter(Boolean).sort((a, b) => a.dist - b.dist);
+    if (!items.length) { if (label) label.textContent = "Kein Supermarkt in der Nähe"; homeMiniMap.setView([lat, lng], 14); return; }
+    const m = items[0];
+    L.circleMarker([m.lat, m.lng], { radius: 7, color: "#F6D9AC", weight: 2, fillColor: "#E5B074", fillOpacity: .95, className: "mk-glow-gold" }).addTo(homeMiniMap);
+    let line = null;
+    try {
+      const rr = await fetch("https://router.project-osrm.org/route/v1/walking/" + lng + "," + lat + ";" + m.lng + "," + m.lat + "?overview=full&geometries=geojson");
+      const rj = await rr.json();
+      if (rj.routes && rj.routes[0]) line = rj.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    } catch (e) {}
+    if (!line) line = [[lat, lng], [m.lat, m.lng]];
+    L.polyline(line, { color: "#F6D9AC", weight: 8, opacity: .22, className: "route-glow" }).addTo(homeMiniMap);
+    L.polyline(line, { color: "#FBE7C2", weight: 2.5, opacity: 1, className: "route-line" }).addTo(homeMiniMap);
+    try { homeMiniMap.fitBounds(L.latLngBounds(line).pad(0.28)); } catch (e) {}
+    if (label) label.textContent = m.name + " · " + fmtDist(m.dist);
+  } catch (e) {
+    if (label) label.textContent = "Karte konnte nicht geladen werden";
+  }
+}
+function initHomeMap() {
+  if (homeMapLoaded) return;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("homebase_wx_coords") || "null"); } catch (e) {}
+  if (cached && cached.lat != null) { homeMapLoaded = true; buildHomeMap(cached.lat, cached.lng); return; }
+  const label = document.getElementById("homeMapLabel");
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => { const c = { lat: pos.coords.latitude, lng: pos.coords.longitude }; localStorage.setItem("homebase_wx_coords", JSON.stringify(c)); homeMapLoaded = true; buildHomeMap(c.lat, c.lng); },
+      () => { if (label) label.textContent = "Standort freigeben für die Route"; },
+      { enableHighAccuracy: false, maximumAge: 1800000, timeout: 15000 }
+    );
+  } else if (label) { label.textContent = "Standort nicht unterstützt"; }
+}
+
+/* ==========================================================================
    SCROLL-EFFEKTE
    ========================================================================== */
 function initScrollFX() {
@@ -1476,6 +1600,71 @@ function initScrollFX() {
 }
 
 /* ==========================================================================
+   DASHBOARD-KOPF — Uhr, Datum, Wetter
+   ========================================================================== */
+function updateHomeClock() {
+  const t = document.getElementById("homeTime");
+  const d = document.getElementById("homeDate");
+  if (!t || !d) return;
+  const now = new Date();
+  t.textContent = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  d.textContent = now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+}
+const WX_CODES = {
+  0: ["☀️", "Klar"], 1: ["🌤️", "Meist klar"], 2: ["⛅", "Teils bewölkt"], 3: ["☁️", "Bewölkt"],
+  45: ["🌫️", "Nebel"], 48: ["🌫️", "Reifnebel"],
+  51: ["🌦️", "Leichter Niesel"], 53: ["🌦️", "Niesel"], 55: ["🌦️", "Starker Niesel"],
+  56: ["🌧️", "Gefrierender Niesel"], 57: ["🌧️", "Gefrierender Niesel"],
+  61: ["🌧️", "Leichter Regen"], 63: ["🌧️", "Regen"], 65: ["🌧️", "Starker Regen"],
+  66: ["🌧️", "Gefrierender Regen"], 67: ["🌧️", "Gefrierender Regen"],
+  71: ["🌨️", "Leichter Schnee"], 73: ["🌨️", "Schnee"], 75: ["🌨️", "Starker Schnee"], 77: ["🌨️", "Schneegriesel"],
+  80: ["🌦️", "Regenschauer"], 81: ["🌦️", "Regenschauer"], 82: ["⛈️", "Heftige Schauer"],
+  85: ["🌨️", "Schneeschauer"], 86: ["🌨️", "Schneeschauer"],
+  95: ["⛈️", "Gewitter"], 96: ["⛈️", "Gewitter, Hagel"], 99: ["⛈️", "Gewitter, Hagel"]
+};
+async function fetchWeather(lat, lng) {
+  const icon = document.getElementById("homeWxIcon");
+  const temp = document.getElementById("homeWxTemp");
+  const desc = document.getElementById("homeWxDesc");
+  if (!temp) return;
+  try {
+    const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lng + "&current=temperature_2m,weather_code&timezone=auto");
+    const j = await r.json();
+    const c = j.current || {};
+    const info = WX_CODES[c.weather_code] || ["🌡️", "—"];
+    if (icon) icon.textContent = info[0];
+    if (temp && c.temperature_2m != null) temp.textContent = Math.round(c.temperature_2m) + "°";
+    if (desc) desc.textContent = info[1];
+  } catch (e) {
+    if (desc) desc.textContent = "Wetter nicht verfügbar";
+  }
+}
+function initWeather() {
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("homebase_wx_coords") || "null"); } catch (e) {}
+  if (cached && cached.lat != null) { fetchWeather(cached.lat, cached.lng); return; }
+  const c = (prospekteLand === "ch") ? { lat: 47.37, lng: 8.54 } : { lat: 52.52, lng: 13.40 };
+  fetchWeather(c.lat, c.lng);
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        localStorage.setItem("homebase_wx_coords", JSON.stringify(coords));
+        fetchWeather(coords.lat, coords.lng);
+      },
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 1800000, timeout: 12000 }
+    );
+  }
+}
+function initHomeHead() {
+  updateHomeClock();
+  setInterval(updateHomeClock, 20000);
+  initWeather();
+  initHomeMap();
+}
+
+/* ==========================================================================
    INIT
    ========================================================================== */
 async function init() {
@@ -1488,5 +1677,6 @@ async function init() {
   renderProspekte();
   openView("dashboard");
   initScrollFX();
+  initHomeHead();
 }
 document.addEventListener("DOMContentLoaded", init);

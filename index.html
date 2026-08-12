@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=23">
+<link rel="stylesheet" href="style.css?v=28">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
@@ -32,10 +32,31 @@
 
 <!-- ================= LANDING ================= -->
 <header class="panel view view--hero is-active" id="view-dashboard">
-  <div class="bg" data-speed="0.16"><img src="einkaufsliste-app/assets/hero.jpg" alt=""></div>
+  <div class="bg" data-speed="0.16"><img src="bg-landing.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--hero">
     <div class="widget widget--hero reveal is-visible">
+      <div class="home-head">
+        <div class="home-clock">
+          <span class="home-clock__time" id="homeTime">--:--</span>
+          <span class="home-clock__date" id="homeDate">—</span>
+        </div>
+        <div class="home-cards">
+          <div class="home-weather" id="homeWeather">
+            <span class="home-weather__icon" id="homeWxIcon">🌤️</span>
+            <span class="home-weather__meta">
+              <span class="home-weather__temp" id="homeWxTemp">–°</span>
+              <span class="home-weather__desc" id="homeWxDesc">Wetter lädt…</span>
+            </span>
+          </div>
+          <div class="home-map">
+            <div class="home-map__head"><span>Karte</span><span class="home-map__arrow">→</span></div>
+            <div id="homeMiniMap" class="home-map__canvas"></div>
+            <span class="home-map__label" id="homeMapLabel">Route wird geladen…</span>
+            <button type="button" class="home-map__hit" data-open-view="standort" aria-label="Standort öffnen"></button>
+          </div>
+        </div>
+      </div>
       <p class="eyebrow">Wochenplan &amp; Einkaufsliste</p>
       <h1 class="hero__title">Was steht <em>heute</em> an?</h1>
       <p class="lead">Alles für euch beide, an einem Ort — in Echtzeit auf beiden Handys. Wähle einen Bereich.</p>
@@ -82,7 +103,7 @@
 
 <!-- ================= EINKAUFSLISTEN — ÜBERSICHT ================= -->
 <section class="panel view" id="view-lists">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -100,7 +121,7 @@
 
 <!-- ================= EINKAUFSLISTE — DETAIL ================= -->
 <section class="panel view" id="view-listdetail">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -130,7 +151,7 @@
 
 <!-- ================= KALENDER & REZEPTE ================= -->
 <section class="panel view" id="view-calendar">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -182,7 +203,7 @@
 
 <!-- ================= BACKLOG ================= -->
 <section class="panel view" id="view-backlog">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/closet.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--narrow">
     <div class="widget widget--pantry reveal">
@@ -202,7 +223,7 @@
 
 <!-- ================= NOTIZEN ================= -->
 <section class="panel view" id="view-notes">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/bath.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -222,7 +243,7 @@
 
 <!-- ================= LAGER-GUIDE ================= -->
 <section class="panel view" id="view-guide">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--narrow">
     <div class="widget reveal">
@@ -285,7 +306,7 @@
 
 <!-- ================= PROSPEKTE ================= -->
 <section class="panel view" id="view-prospekte">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/kitchen.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -319,7 +340,7 @@
 
 <!-- ================= STANDORT ================= -->
 <section class="panel view" id="view-standort">
-  <div class="bg" data-speed="0.14"><img src="einkaufsliste-app/assets/living.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -336,7 +357,7 @@
       <p class="modal-note" id="standortNote">Standort-Teilen ist aus.</p>
     </div>
     <div id="standortMap" class="standort-map"></div>
-    <p class="guide-note">Hinweis: Dein Standort ist nur sichtbar, solange „Standort teilen" an ist. Wie in der ganzen App gilt: Wer euren Link kennt, kann die Daten sehen — teilt ihn nicht öffentlich.</p>
+    <p class="guide-note">Hinweis: Dein Standort ist nur sichtbar, solange „Standort teilen" an ist. Auf der Karte siehst du zusätzlich Supermärkte in der Nähe. Wer euren Link kennt, kann die Daten sehen — teilt ihn nicht öffentlich.</p>
   </div>
 </section>
 
@@ -398,7 +419,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="config.js?v=23"></script>
-<script src="script.js?v=23"></script>
+<script src="config.js?v=28"></script>
+<script src="script.js?v=28"></script>
 </body>
 </html>
