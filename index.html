@@ -30,8 +30,12 @@
   #bgVideo{ position:fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:-1;
     pointer-events:none; opacity:0; transition:opacity .8s ease; }
   #bgVideo.is-ready{ opacity:1; }
-  html,body{ background:#140E0A !important; }
+  /* WICHTIG: nur html bekommt eine Farbe. Hat body eine eigene Hintergrundfarbe,
+     uebermalt sie alle Ebenen mit negativem z-index (Bild + Video). */
+  html{ background:#140E0A !important; }
+  body{ background:transparent !important; }
   .bg{ background:transparent !important; }
+  .veil{ pointer-events:none; }
 
   /* Kostenschaetzung */
   .cost-box{ margin-top:18px; background:rgba(255,247,240,.05); border:1px solid rgba(240,206,154,.32);
