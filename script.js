@@ -232,7 +232,65 @@ async function mutCopyFromList(sourceId, targetId) {
 }
 
 /* ---------- Mutationen: Artikel ---------- */
+/* ---- Mengen zusammenfassen: 400g + 200g Tomaten = 600g Tomaten ---- */
+const MERGE_UNITS = {
+  g:["g",1], gr:["g",1], gramm:["g",1], kg:["g",1000], kilo:["g",1000],
+  ml:["ml",1], cl:["ml",10], dl:["ml",100], l:["ml",1000], liter:["ml",1000],
+  el:["el",1], tl:["tl",1], stk:["stk",1], "stück":["stk",1], stueck:["stk",1],
+  dose:["dose",1], dosen:["dose",1], packung:["pack",1], packungen:["pack",1],
+  pck:["pack",1], pkg:["pack",1], bund:["bund",1], prise:["prise",1], zehe:["zehe",1], zehen:["zehe",1]
+};
+function mNum(s) { return parseFloat(String(s).replace(",", ".")); }
+function mFmt(n) { const r = Math.round(n * 100) / 100; return String(r).replace(".", ","); }
+function mUnitKey(u) { return String(u || "").toLowerCase().replace(/\.$/, ""); }
+function mKeyName(n) {
+  let s = String(n || "").toLowerCase().trim().replace(/[^a-zäöüß\s]/g, "").replace(/\s+/g, " ").trim();
+  if (s.length > 4) { if (s.endsWith("en")) s = s.slice(0, -2); else if (s.endsWith("n") || s.endsWith("s") || s.endsWith("e")) s = s.slice(0, -1); }
+  return s;
+}
+function parseItemText(raw) {
+  const s = String(raw || "").trim();
+  let m = s.match(/^(\d+(?:[.,]\d+)?)\s*[x×]\s*(.+)$/i);
+  if (m) return { qty: mNum(m[1]), unit: null, name: m[2].trim() };
+  m = s.match(/^(\d+(?:[.,]\d+)?)\s*([a-zA-ZäöüÄÖÜß]+\.?)\s+(.+)$/);
+  if (m && MERGE_UNITS[mUnitKey(m[2])]) return { qty: mNum(m[1]), unit: mUnitKey(m[2]), unitRaw: m[2].replace(/\.$/, ""), name: m[3].trim() };
+  m = s.match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*([a-zA-ZäöüÄÖÜß]+\.?)$/);
+  if (m && MERGE_UNITS[mUnitKey(m[3])]) return { qty: mNum(m[2]), unit: mUnitKey(m[3]), unitRaw: m[3].replace(/\.$/, ""), name: m[1].trim() };
+  m = s.match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/);
+  if (m) return { qty: mNum(m[1]), unit: null, name: m[2].trim() };
+  return { qty: 1, unit: null, name: s };
+}
+function mergedText(a, b) {
+  if (!a.name || mKeyName(a.name) !== mKeyName(b.name)) return null;
+  if (!a.unit && !b.unit) {
+    const t = a.qty + b.qty;
+    return t > 1 ? mFmt(t) + "× " + a.name : a.name;
+  }
+  if (a.unit && b.unit) {
+    const ua = MERGE_UNITS[a.unit], ub = MERGE_UNITS[b.unit];
+    if (!ua || !ub || ua[0] !== ub[0]) return null;
+    const base = a.qty * ua[1] + b.qty * ub[1];
+    let unit = a.unitRaw || a.unit, total = base / ua[1];
+    if (ua[0] === "g" && base >= 1000) { unit = "kg"; total = base / 1000; }
+    else if (ua[0] === "g") { unit = "g"; total = base; }
+    else if (ua[0] === "ml" && base >= 1000) { unit = "l"; total = base / 1000; }
+    else if (ua[0] === "ml") { unit = "ml"; total = base; }
+    return mFmt(total) + " " + unit + " " + a.name;
+  }
+  return null;
+}
+function findMergeTarget(text, listId) {
+  const incoming = parseItemText(text);
+  const items = itemsOfList(listId).filter(i => !i.checked);
+  for (const it of items) {
+    const merged = mergedText(parseItemText(it.text), incoming);
+    if (merged) return { id: it.id, text: merged };
+  }
+  return null;
+}
 async function mutAddShopping(category, text, listId) {
+  const hit = findMergeTarget(text, listId);
+  if (hit) { await mutUpdateShopping(hit.id, hit.text); return; }
   if (REMOTE) { await sb.from("shopping_items").insert({ category, text, list_id: listId, calories: null }); await remoteFetchAll(); }
   else { state.shopping.push({ id: uid("s"), category, text, list_id: listId, calories: null, checked: false }); localSave(); }
   renderAll();
