@@ -19,8 +19,34 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="HomeBase">
 <meta name="theme-color" content="#C6A46A">
+<style>
+  /* Video-Hintergrund */
+  #bgVideo{ position:fixed; inset:0; width:100%; height:100%; object-fit:cover; z-index:-1; pointer-events:none; }
+  html,body{ background:#140E0A !important; }
+  .bg{ background:transparent !important; }
+
+  /* Kostenschätzung */
+  .cost-box{ margin-top:18px; background:rgba(255,247,240,.05); border:1px solid rgba(240,206,154,.32);
+    border-radius:14px; padding:16px 18px; box-shadow:0 0 22px rgba(231,189,134,.18); }
+  .cost-box[hidden]{ display:none; }
+  .cost-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding-bottom:10px; margin-bottom:6px; border-bottom:1px solid rgba(240,206,154,.22); }
+  .cost-head__label{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:rgba(245,237,228,.66); }
+  .cost-total{ font-family:"Marcellus",serif; font-size:26px; color:#F6D9AC; text-shadow:0 0 16px rgba(244,214,166,.5); }
+  .cost-row{ display:flex; justify-content:space-between; gap:12px; padding:7px 0;
+    border-bottom:1px solid rgba(240,206,154,.10); font-size:14px; color:#F5EDE4; }
+  .cost-row:last-of-type{ border-bottom:none; }
+  .cost-row span:last-child{ color:#F6D9AC; white-space:nowrap; }
+  .cost-src{ font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#F6D9AC;
+    border:1px solid rgba(240,206,154,.45); border-radius:999px; padding:1px 7px; margin-left:6px; }
+  .cost-note{ margin-top:10px; font-size:12px; color:rgba(245,237,228,.44); line-height:1.5; }
+  .receipt-item-row{ grid-template-columns:2fr 1fr 1fr 1fr !important; }
+  @media (max-width:720px){ .receipt-item-row{ grid-template-columns:1fr !important; } }
+</style>
 </head>
 <body>
+
+<video id="bgVideo" autoplay muted loop playsinline webkit-playsinline preload="auto" src="bg.mp4?v=3"></video>
 
 <div class="scroll-progress" aria-hidden="true"><div id="scrollBar"></div></div>
 
@@ -32,7 +58,7 @@
 
 <!-- ================= LANDING ================= -->
 <header class="panel view view--hero is-active" id="view-dashboard">
-  <div class="bg" data-speed="0.16"><img src="bg-landing.jpg" alt=""></div>
+  <div class="bg" data-speed="0.16"></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--hero">
     <div class="widget widget--hero reveal is-visible">
@@ -103,7 +129,7 @@
 
 <!-- ================= EINKAUFSLISTEN — ÜBERSICHT ================= -->
 <section class="panel view" id="view-lists">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -121,7 +147,7 @@
 
 <!-- ================= EINKAUFSLISTE — DETAIL ================= -->
 <section class="panel view" id="view-listdetail">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -140,9 +166,11 @@
         <button class="btn btn--outline btn--small" id="copyFromLast" hidden>Aus letzter übernehmen</button>
         <button class="btn btn--outline btn--small" id="toggleHistory" hidden>Historie</button>
         <button class="btn btn--outline btn--small" id="downloadListBtn">⬇ Liste sichern</button>
+        <button class="btn btn--gold btn--small" id="estimateCostBtn">💶 Kosten schätzen</button>
         <button class="btn btn--outline" id="completeList">Liste abschließen ✓</button>
       </div>
       <p class="modal-note" id="quickSortNote"></p>
+      <div class="cost-box" id="costBox" hidden></div>
       <div class="history-box" id="historyBox" hidden></div>
     </div>
     <div class="list-grid" id="listGrid"></div>
@@ -151,7 +179,7 @@
 
 <!-- ================= KALENDER & REZEPTE ================= -->
 <section class="panel view" id="view-calendar">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -203,7 +231,7 @@
 
 <!-- ================= BACKLOG ================= -->
 <section class="panel view" id="view-backlog">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--narrow">
     <div class="widget widget--pantry reveal">
@@ -223,7 +251,7 @@
 
 <!-- ================= NOTIZEN ================= -->
 <section class="panel view" id="view-notes">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -243,7 +271,7 @@
 
 <!-- ================= LAGER-GUIDE ================= -->
 <section class="panel view" id="view-guide">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content panel__content--narrow">
     <div class="widget reveal">
@@ -306,7 +334,7 @@
 
 <!-- ================= PROSPEKTE ================= -->
 <section class="panel view" id="view-prospekte">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -340,7 +368,7 @@
 
 <!-- ================= STANDORT ================= -->
 <section class="panel view" id="view-standort">
-  <div class="bg" data-speed="0.14"><img src="bg-inner.jpg" alt=""></div>
+  <div class="bg" data-speed="0.14"></div>
   <div class="veil"></div>
   <div class="panel__content">
     <div class="widget widget--head reveal">
@@ -422,6 +450,5 @@
 <script src="config.js?v=29"></script>
 <script src="script.js?v=29"></script>
 <script src="linkify.js?v=1"></script>
-<script src="videobg.js?v=2"></script>
 </body>
 </html>
