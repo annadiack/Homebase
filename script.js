@@ -1218,7 +1218,8 @@ document.getElementById("receiptFile").addEventListener("change", async e => {
   try {
     const base64 = await fileToBase64(file);
     const result = await callScanReceipt(base64, file.type || "image/jpeg");
-    currentReceiptItems = (result.items || []).map(it => ({ text: it.text, quantity: it.quantity || "", calories: it.calories ?? null }));
+    currentReceiptStore = result.store || "Edeka";
+    currentReceiptItems = (result.items || []).map(it => ({ text: it.text, quantity: it.quantity || "", calories: it.calories ?? null, price: it.price ?? null }));
     renderReceiptResults();
     note.textContent = currentReceiptItems.length ? "Zutaten erkannt — vor dem Speichern prüfen." : "Keine Artikel erkannt.";
     document.getElementById("saveReceiptItems").hidden = !currentReceiptItems.length;
@@ -1233,18 +1234,20 @@ function renderReceiptResults() {
       <input type="text" data-field="text" value="${esc(it.text)}">
       <input type="text" data-field="quantity" value="${esc(it.quantity)}" placeholder="Menge">
       <input type="number" data-field="calories" value="${it.calories ?? ""}" placeholder="kcal">
+      <input type="number" step="0.01" data-field="price" value="${it.price ?? ""}" placeholder="€">
     </div>`).join("");
   box.querySelectorAll(".receipt-item-row").forEach(row => {
     const idx = +row.dataset.idx;
     row.querySelectorAll("input").forEach(input => input.addEventListener("change", () => {
       const f = input.dataset.field;
-      currentReceiptItems[idx][f] = f === "calories" ? (input.value === "" ? null : +input.value) : input.value;
+      currentReceiptItems[idx][f] = (f === "calories" || f === "price") ? (input.value === "" ? null : +input.value) : input.value;
     }));
   });
 }
 document.getElementById("saveReceiptItems").addEventListener("click", async () => {
   if (!currentReceiptItems || !currentReceiptItems.length) return;
   for (const it of currentReceiptItems) { if (!it.text.trim()) continue; await mutAddBacklog(it.text.trim(), it.calories, it.quantity, "receipt"); }
+  await savePricePoints(currentReceiptItems, currentReceiptStore);
   currentReceiptItems = null; closeModal(receiptModal);
 });
 
@@ -1639,6 +1642,83 @@ function initHomeMap() {
     );
   } else if (label) { label.textContent = "Standort nicht unterstützt"; }
 }
+
+/* ==========================================================================
+   PREIS-DATENBANK + KOSTENSCHÄTZUNG
+   ========================================================================== */
+let currentReceiptStore = "Edeka";
+
+async function savePricePoints(items, store) {
+  if (!REMOTE || !Array.isArray(items)) return;
+  const rows = items
+    .filter(it => it && it.text && it.text.trim() && it.price != null && !isNaN(it.price) && +it.price > 0)
+    .map(it => ({
+      name: it.text.trim(),
+      name_key: mKeyName(parseItemText(it.text.trim()).name),
+      price: +(+it.price).toFixed(2),
+      quantity: it.quantity || null,
+      store: store || "Edeka",
+      source: "receipt"
+    }));
+  if (!rows.length) return;
+  try { await sb.from("price_points").insert(rows); } catch (e) { console.warn("price_points:", e); }
+}
+
+async function loadKnownPrices(texts) {
+  if (!REMOTE) return [];
+  const keys = [...new Set(texts.map(t => mKeyName(parseItemText(t).name)).filter(Boolean))];
+  if (!keys.length) return [];
+  try {
+    const { data } = await sb.from("price_points").select("name,name_key,price,quantity").in("name_key", keys).limit(400);
+    const byKey = {};
+    (data || []).forEach(r => {
+      if (!byKey[r.name_key]) byKey[r.name_key] = { name: r.name, quantity: r.quantity, sum: 0, n: 0 };
+      byKey[r.name_key].sum += Number(r.price); byKey[r.name_key].n++;
+    });
+    return Object.values(byKey).map(v => ({ name: v.name, quantity: v.quantity, price: +(v.sum / v.n).toFixed(2) }));
+  } catch (e) { console.warn(e); return []; }
+}
+
+async function callEstimateCosts(texts, store, known) {
+  const res = await fetch(`${FUNCTIONS_BASE}/estimate-costs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ items: texts, store, known }),
+  });
+  if (!res.ok) throw new Error("estimate-costs " + res.status);
+  return res.json();
+}
+
+function euro(n) { return (Math.round(Number(n) * 100) / 100).toFixed(2).replace(".", ",") + " €"; }
+
+(function initCostEstimate() {
+  const btn = document.getElementById("estimateCostBtn");
+  const box = document.getElementById("costBox");
+  if (!btn || !box) return;
+  btn.addEventListener("click", async () => {
+    const items = itemsOfList(activeListId).filter(i => !i.checked);
+    if (!items.length) { box.hidden = false; box.innerHTML = '<p class="cost-note">Keine offenen Artikel auf der Liste.</p>'; return; }
+    if (!FUNCTIONS_BASE) { box.hidden = false; box.innerHTML = '<p class="cost-note">Braucht eine Supabase-Verbindung.</p>'; return; }
+    const texts = items.map(i => i.text);
+    box.hidden = false;
+    box.innerHTML = '<p class="cost-note">Preise werden geschätzt…</p>';
+    try {
+      const known = await loadKnownPrices(texts);
+      const r = await callEstimateCosts(texts, "Edeka (Deutschland)", known);
+      const rows = (r.items || []).map(it =>
+        `<div class="cost-row"><span>${esc(it.text)}${it.source === "historie" ? ' <span class="cost-src">Beleg</span>' : ""}</span><span>${euro(it.price)}</span></div>`
+      ).join("");
+      const total = r.total != null ? r.total : (r.items || []).reduce((s, i) => s + Number(i.price || 0), 0);
+      box.innerHTML =
+        `<div class="cost-head"><span class="cost-head__label">Geschätzte Kosten · Edeka</span><span class="cost-total">${euro(total)}</span></div>` +
+        rows +
+        `<p class="cost-note">${known.length ? known.length + " Artikel aus euren Kassenzetteln berücksichtigt. " : ""}Schätzung — echte Preise können abweichen.</p>`;
+    } catch (e) {
+      box.innerHTML = '<p class="cost-note">Schätzung fehlgeschlagen — bitte nochmal versuchen.</p>';
+      console.warn(e);
+    }
+  });
+})();
 
 /* ==========================================================================
    SCROLL-EFFEKTE
