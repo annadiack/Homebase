@@ -54,7 +54,8 @@ const REMOTE = !!sb;
 const FUNCTIONS_BASE = cfg.SUPABASE_URL ? `${cfg.SUPABASE_URL}/functions/v1` : "";
 const STORAGE_KEY = "homebase_state_v7";
 
-let state = { lists: [], categories: [], shopping: [], backlog: [], calendar: [], recipes: [], notes: [], locations: [] };
+let state = { lists: [], categories: [], shopping: [], backlog: [], calendar: [], recipes: [], notes: [], locations: [], foodLog: [], goals: null };
+let trackerDate = null;
 let noteQuery = "";
 let expandedNote = null;
 let currentImport = null;
@@ -70,7 +71,7 @@ let calAnchor = todayISO();
 let expandedCal = null;
 
 /* View-Navigation (Eltern für Zurück-Button) */
-const VIEW_PARENT = { lists: "dashboard", listdetail: "lists", calendar: "dashboard", backlog: "dashboard", notes: "dashboard", guide: "dashboard", prospekte: "dashboard", standort: "dashboard" };
+const VIEW_PARENT = { lists: "dashboard", listdetail: "lists", calendar: "dashboard", backlog: "dashboard", notes: "dashboard", guide: "dashboard", prospekte: "dashboard", standort: "dashboard", tracker: "dashboard" };
 let currentView = "dashboard";
 
 /* ---------- Lokal-Modus ---------- */
@@ -91,7 +92,7 @@ function localSave() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
 /* ---------- Supabase-Modus ---------- */
 async function remoteFetchAll() {
-  const [lists, cats, shop, backlog, cal, recipes, notes, locations] = await Promise.all([
+  const [lists, cats, shop, backlog, cal, recipes, notes, locations, foodLog, goals] = await Promise.all([
     sb.from("shopping_lists").select("*").order("sort_order"),
     sb.from("categories").select("*").order("sort_order"),
     sb.from("shopping_items").select("*").order("created_at"),
@@ -100,6 +101,8 @@ async function remoteFetchAll() {
     sb.from("recipes").select("*").order("created_at"),
     sb.from("notes").select("*").order("updated_at", { ascending: false }),
     sb.from("locations").select("*"),
+    sb.from("food_log").select("*").order("created_at"),
+    sb.from("nutrition_goals").select("*").eq("id", "default").maybeSingle(),
   ]);
   const err = lists.error || cats.error || shop.error || backlog.error || cal.error || recipes.error || notes.error || locations.error;
   if (err) throw err;
@@ -111,6 +114,8 @@ async function remoteFetchAll() {
   state.calendar = cal.data || [];
   state.recipes = (recipes.data || []).map(r => ({ ...r, ingredients: r.ingredients || [] }));
   state.notes = notes.data || [];
+  state.foodLog = (foodLog && foodLog.data) || [];
+  state.goals = (goals && goals.data) || null;
 }
 
 let refreshTimer = null;
@@ -316,8 +321,9 @@ async function mutDeleteShopping(id) {
 
 /* ---------- Mutationen: Backlog ---------- */
 async function mutAddBacklog(text, calories, quantity, source) {
-  if (REMOTE) { await sb.from("backlog_items").insert({ text, calories: calories ?? null, quantity: quantity || "", source: source || "manual" }); await remoteFetchAll(); }
-  else { state.backlog.push({ id: uid("b"), text, calories: calories ?? null, quantity: quantity || "", source: source || "manual", checked: false }); localSave(); }
+  const exp = suggestExpiry(text);
+  if (REMOTE) { await sb.from("backlog_items").insert({ text, calories: calories ?? null, quantity: quantity || "", source: source || "manual", expires_at: exp }); await remoteFetchAll(); }
+  else { state.backlog.push({ id: uid("b"), text, calories: calories ?? null, quantity: quantity || "", source: source || "manual", checked: false, expires_at: exp }); localSave(); }
   renderAll();
 }
 async function mutToggleBacklog(id, checked) {
@@ -610,6 +616,8 @@ function renderDashboardTiles() {
   document.getElementById("tileBacklogMeta").textContent = state.backlog.length ? `${state.backlog.length} Artikel` : "Leer";
   const nt = document.getElementById("tileNotesMeta");
   if (nt) nt.textContent = state.notes.length ? `${state.notes.length} Notiz${state.notes.length > 1 ? "en" : ""}` : "Leer";
+  const tt = document.getElementById("tileTrackerMeta");
+  if (tt) { const s = foodTotals(todayISO()), g = goalValues(); tt.textContent = `${s.kcal} / ${g.kcal} kcal heute`; }
 }
 
 /* ==========================================================================
@@ -774,6 +782,7 @@ function renderBacklog() {
         <span class="check" data-bcheck="${it.id}">${checkIconSVG()}</span>
         <span class="item__text">${esc(it.text)}${it.quantity ? ` <small>(${esc(it.quantity)})</small>` : ""}</span>
         ${calBadge(it.calories)}
+        ${mhdBadge(it)}
         <button type="button" class="item-delete-btn" data-delete-pantry="${it.id}" aria-label="Löschen">×</button>
       </div>
     </div>`).join("");
@@ -783,6 +792,8 @@ function renderBacklog() {
     const it = state.backlog.find(i => String(i.id) === el.dataset.bcheck); if (!it) return;
     it.checked = !it.checked; el.closest(".item").classList.toggle("is-checked", it.checked); mutToggleBacklog(it.id, it.checked);
   }));
+  grid.querySelectorAll("[data-mhd]").forEach(inp => inp.addEventListener("change", e => { e.stopPropagation(); mutSetExpiry(inp.dataset.mhd, inp.value || null); }));
+  grid.querySelectorAll("[data-mhd]").forEach(inp => inp.addEventListener("click", e => e.stopPropagation()));
   grid.querySelectorAll("[data-delete-pantry]").forEach(btn => btn.addEventListener("click", e => { e.stopPropagation(); mutDeleteBacklog(btn.dataset.deletePantry); }));
   grid.querySelectorAll("[data-row-id]").forEach(row => makeSwipeToDelete(row, row.querySelector(".item"), () => mutDeleteBacklog(row.dataset.rowId)));
 }
@@ -835,6 +846,7 @@ function dayRowHTML(iso) {
       <div class="cal-day-row__date"><span class="cal-dow">${d.toLocaleDateString("de-DE", { weekday: "short" })}</span><span class="cal-dom">${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</span></div>
       <div class="cal-day-row__body">
         <div class="cal-chips">${dayEntriesHTML(iso) || `<span class="cal-empty">—</span>`}</div>
+        ${expiryHTML(iso)}
         ${calDetailHTML(iso)}
         ${recipeAddSelect(iso)}
       </div>
@@ -868,7 +880,7 @@ function renderCalMonth(body, title) {
   for (let i = 0; i < 42; i++) {
     const iso = addDaysISO(gridStart, i), dd = new Date(iso + "T00:00:00"), meals = calEntriesOn(iso);
     html += `<button type="button" class="cal-cell ${dd.getMonth() === anchorMonth ? "" : "is-out"} ${iso === todayISO() ? "is-today" : ""}" data-cal-day="${iso}">
-      <span class="cal-cell__num">${dd.getDate()}</span>${meals.slice(0, 3).map(m => `<span class="cal-cell__meal">${esc(shortTitle(m.meal))}</span>`).join("")}</button>`;
+      <span class="cal-cell__num">${dd.getDate()}</span>${meals.slice(0, 2).map(m => `<span class="cal-cell__meal">${esc(shortTitle(m.meal))}</span>`).join("")}${expiringOn(iso).slice(0, 2).map(b => `<span class="cal-cell__mhd">⏳ ${esc(shortTitle(b.text))}</span>`).join("")}</button>`;
   }
   html += `</div>`; body.innerHTML = html;
   body.querySelectorAll("[data-cal-day]").forEach(c => c.addEventListener("click", () => { calAnchor = c.dataset.calDay; calView = "day"; renderCalendar(); }));
@@ -996,6 +1008,7 @@ function renderAll() {
   renderCalendar();
   renderRecipeGallery();
   renderNotes();
+  renderTracker();
   if (typeof renderLocationMarkers === "function") renderLocationMarkers();
 }
 function renderSyncBadge(ok) {
@@ -1719,6 +1732,272 @@ function euro(n) { return (Math.round(Number(n) * 100) / 100).toFixed(2).replace
     }
   });
 })();
+
+/* ==========================================================================
+   KALORIEN- UND MAKRO-TRACKER
+   ========================================================================== */
+const MEALS = [["breakfast","Frühstück","☕"],["lunch","Mittagessen","🍽️"],["dinner","Abendessen","🌙"],["snack","Snacks","🍎"]];
+
+function trackerISO() { return trackerDate || todayISO(); }
+function goalValues() {
+  const g = state.goals || {};
+  return { kcal: +(g.kcal ?? 2000), carbs: +(g.carbs ?? 250), fat: +(g.fat ?? 70), protein: +(g.protein ?? 100) };
+}
+function foodOn(iso) { return (state.foodLog || []).filter(f => f.log_date === iso); }
+function foodTotals(iso) {
+  return foodOn(iso).reduce((s, f) => ({
+    kcal: s.kcal + (+f.kcal || 0), carbs: s.carbs + (+f.carbs || 0),
+    fat: s.fat + (+f.fat || 0), protein: s.protein + (+f.protein || 0)
+  }), { kcal: 0, carbs: 0, fat: 0, protein: 0 });
+}
+function r1(n) { return Math.round(n * 10) / 10; }
+function pct(v, g) { return g > 0 ? Math.max(0, Math.min(100, (v / g) * 100)) : 0; }
+function tidyName(s) {
+  const w = String(s || "").trim().split(/\s+/);
+  const out = [];
+  for (const x of w) { if (!out.length || out[out.length - 1].toLowerCase() !== x.toLowerCase()) out.push(x); }
+  return out.join(" ");
+}
+
+async function mutAddFood(entry) {
+  const row = {
+    log_date: entry.log_date || trackerISO(), meal: entry.meal || "snack",
+    name: tidyName(entry.name), kcal: Math.round(+entry.kcal || 0),
+    carbs: r1(+entry.carbs || 0), fat: r1(+entry.fat || 0), protein: r1(+entry.protein || 0),
+    source: entry.source || "manual"
+  };
+  if (REMOTE) { await sb.from("food_log").insert(row); await remoteFetchAll(); }
+  else { state.foodLog.push({ id: uid("f"), ...row }); localSave(); }
+  renderAll();
+}
+async function mutDeleteFood(id) {
+  if (REMOTE) { await sb.from("food_log").delete().eq("id", id); await remoteFetchAll(); }
+  else { state.foodLog = state.foodLog.filter(f => String(f.id) !== String(id)); localSave(); }
+  renderAll();
+}
+async function mutSaveGoals(g) {
+  if (REMOTE) { await sb.from("nutrition_goals").upsert({ id: "default", ...g, updated_at: new Date().toISOString() }); await remoteFetchAll(); }
+  else { state.goals = { id: "default", ...g }; localSave(); }
+  renderAll();
+}
+async function callAnalyzeFood(payload) {
+  const res = await fetch(`${FUNCTIONS_BASE}/analyze-food`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("analyze-food " + res.status);
+  return res.json();
+}
+
+/* ---- geplante Rezepte des Tages ---- */
+function recipeMacros(r) {
+  const kcal = ((r.ingredients || []).reduce((s, i) => s + (i.calories || 0), 0)) || r.calories || 0;
+  return { kcal, carbs: r.carbs, fat: r.fat, protein: r.protein };
+}
+function plannedHTML(iso) {
+  const entries = (state.calendar || []).filter(e => e.plan_date === iso && e.meal);
+  if (!entries.length) return "";
+  return `<div class="tr-planned">
+    <p class="tr-sub">Geplant für diesen Tag</p>
+    ${entries.map(e => {
+      const r = e.recipe_id ? state.recipes.find(x => x.id === e.recipe_id) : null;
+      const m = r ? recipeMacros(r) : { kcal: 0 };
+      return `<div class="tr-plan-row">
+        <span>${esc(shortTitle(e.meal))}${m.kcal ? ` <small>${m.kcal} kcal</small>` : ""}</span>
+        <button type="button" class="btn btn--outline btn--small" data-take-plan="${e.id}">Übernehmen</button>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+async function takePlannedRecipe(entryId) {
+  const e = (state.calendar || []).find(x => String(x.id) === String(entryId));
+  if (!e) return;
+  const note = document.getElementById("trNote");
+  const r = e.recipe_id ? state.recipes.find(x => x.id === e.recipe_id) : null;
+  let m = r ? recipeMacros(r) : { kcal: 0 };
+  if (!m.kcal || m.carbs == null || m.fat == null || m.protein == null) {
+    if (note) note.textContent = "Makros werden ergänzt…";
+    try {
+      const ings = r && r.ingredients && r.ingredients.length ? r.ingredients.map(i => i.text).join(", ") : e.meal;
+      const res = await callAnalyzeFood({ text: `Rezept "${shortTitle(e.meal)}" mit: ${ings}. Eine Portion.` });
+      const it = (res.items || [])[0];
+      if (it) {
+        m = { kcal: m.kcal || it.kcal, carbs: it.carbs, fat: it.fat, protein: it.protein };
+        if (r && REMOTE) { try { await sb.from("recipes").update({ calories: m.kcal, carbs: m.carbs, fat: m.fat, protein: m.protein }).eq("id", r.id); } catch (err) {} }
+      }
+    } catch (err) { console.warn(err); }
+  }
+  await mutAddFood({ name: shortTitle(e.meal), kcal: m.kcal, carbs: m.carbs, fat: m.fat, protein: m.protein, meal: currentMeal(), source: "recipe" });
+  if (note) note.textContent = "Rezept übernommen.";
+}
+function currentMeal() {
+  const sel = document.getElementById("trMeal");
+  return sel ? sel.value : "snack";
+}
+
+/* ---- Anzeige ---- */
+function renderTracker() {
+  const view = document.getElementById("view-tracker");
+  if (!view) return;
+  const iso = trackerISO(), g = goalValues(), t = foodTotals(iso);
+
+  const strip = document.getElementById("trWeek");
+  if (strip) {
+    const start = mondayOfISO(iso);
+    strip.innerHTML = Array.from({ length: 7 }, (_, i) => {
+      const d = addDaysISO(start, i), dd = new Date(d + "T00:00:00");
+      const has = foodOn(d).length > 0;
+      return `<button type="button" class="tr-day ${d === iso ? "is-sel" : ""} ${d === todayISO() ? "is-today" : ""}" data-tr-day="${d}">
+        <span class="tr-day__dow">${dd.toLocaleDateString("de-DE", { weekday: "narrow" })}</span>
+        <span class="tr-day__dot ${has ? "is-done" : ""}">${has ? "✓" : ""}</span></button>`;
+    }).join("");
+    strip.querySelectorAll("[data-tr-day]").forEach(b => b.addEventListener("click", () => { trackerDate = b.dataset.trDay; renderTracker(); }));
+  }
+
+  const dl = document.getElementById("trDateLabel");
+  if (dl) dl.textContent = iso === todayISO() ? "Heute" : new Date(iso + "T00:00:00").toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long" });
+
+  const kc = document.getElementById("trKcal");
+  if (kc) kc.innerHTML = `
+    <div class="tr-kcal__head"><span class="tr-kcal__big">${t.kcal}</span><span class="tr-kcal__goal">/ ${g.kcal} kcal</span>
+      <span class="tr-kcal__left">${Math.max(0, g.kcal - t.kcal)} übrig</span></div>
+    <div class="tr-bar"><i style="width:${pct(t.kcal, g.kcal)}%"></i></div>`;
+
+  const mac = document.getElementById("trMacros");
+  if (mac) mac.innerHTML = [["Kohlenhydrate", t.carbs, g.carbs, "c"], ["Fett", t.fat, g.fat, "f"], ["Protein", t.protein, g.protein, "p"]]
+    .map(([label, v, gv, cls]) => `<div class="tr-macro">
+      <span class="tr-macro__label">${label}</span>
+      <span class="tr-macro__val">${r1(v)} g <small>/ ${gv}</small></span>
+      <div class="tr-bar tr-bar--${cls}"><i style="width:${pct(v, gv)}%"></i></div></div>`).join("");
+
+  const diary = document.getElementById("trDiary");
+  if (diary) {
+    const rows = foodOn(iso);
+    diary.innerHTML = MEALS.map(([key, label, icon]) => {
+      const list = rows.filter(f => f.meal === key);
+      const sum = list.reduce((s, f) => s + (+f.kcal || 0), 0);
+      return `<div class="tr-meal">
+        <div class="tr-meal__head"><span>${icon} ${label}</span><span class="tr-meal__sum">${sum} kcal</span></div>
+        ${list.length ? list.map(f => `<div class="tr-entry">
+            <span class="tr-entry__name">${esc(f.name)}</span>
+            <span class="tr-entry__macros">${f.kcal} kcal · K ${r1(+f.carbs)} · F ${r1(+f.fat)} · P ${r1(+f.protein)}</span>
+            <button type="button" class="item-delete-btn" data-del-food="${f.id}" aria-label="Entfernen">×</button>
+          </div>`).join("") : `<p class="tr-empty">Noch nichts eingetragen.</p>`}
+      </div>`;
+    }).join("") + plannedHTML(iso);
+    diary.querySelectorAll("[data-del-food]").forEach(b => b.addEventListener("click", () => mutDeleteFood(b.dataset.delFood)));
+    diary.querySelectorAll("[data-take-plan]").forEach(b => b.addEventListener("click", () => takePlannedRecipe(b.dataset.takePlan)));
+  }
+
+  const gi = document.getElementById("goalKcal");
+  if (gi && document.activeElement !== gi) {
+    gi.value = g.kcal; document.getElementById("goalCarbs").value = g.carbs;
+    document.getElementById("goalFat").value = g.fat; document.getElementById("goalProtein").value = g.protein;
+  }
+}
+
+/* ---- Eingabe ---- */
+(function initTracker() {
+  const addBtn = document.getElementById("trAddBtn");
+  if (!addBtn) return;
+  const input = document.getElementById("trInput");
+  const note = document.getElementById("trNote");
+
+  const addByText = async () => {
+    const v = input.value.trim(); if (!v) return;
+    if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+    note.textContent = "Wird berechnet…"; input.value = "";
+    try {
+      const res = await callAnalyzeFood({ text: v });
+      const items = res.items || [];
+      if (!items.length) { note.textContent = "Konnte nicht erkannt werden — bitte genauer beschreiben."; return; }
+      for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: "text" });
+      note.textContent = items.length + " Eintrag" + (items.length > 1 ? "e" : "") + " hinzugefügt.";
+    } catch (e) { note.textContent = "Hat nicht geklappt — bitte nochmal."; console.warn(e); }
+  };
+  addBtn.addEventListener("click", addByText);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") addByText(); });
+
+  const photo = document.getElementById("trPhoto");
+  if (photo) photo.addEventListener("change", async e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+    note.textContent = "Foto wird ausgewertet…";
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await callAnalyzeFood({ image: base64, mimeType: file.type || "image/jpeg" });
+      const items = res.items || [];
+      if (!items.length) { note.textContent = res.note || "Nichts erkannt — bitte näher und schärfer fotografieren."; return; }
+      for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: res.source || "photo" });
+      note.textContent = (res.note ? res.note + " " : "") + "Hinzugefügt — Werte kannst du per × entfernen und neu erfassen.";
+    } catch (err) { note.textContent = "Foto-Auswertung fehlgeschlagen."; console.warn(err); }
+    finally { photo.value = ""; }
+  });
+
+  const gb = document.getElementById("saveGoalsBtn");
+  if (gb) gb.addEventListener("click", () => {
+    mutSaveGoals({
+      kcal: +document.getElementById("goalKcal").value || 2000,
+      carbs: +document.getElementById("goalCarbs").value || 250,
+      fat: +document.getElementById("goalFat").value || 70,
+      protein: +document.getElementById("goalProtein").value || 100,
+    });
+    const n = document.getElementById("goalsNote"); if (n) n.textContent = "Ziele gespeichert.";
+  });
+
+  const td = document.getElementById("trToday");
+  if (td) td.addEventListener("click", () => { trackerDate = todayISO(); renderTracker(); });
+})();
+
+/* ==========================================================================
+   MHD (Mindesthaltbarkeit) — Backlog + Kalender
+   ========================================================================== */
+const SHELF_LIFE = [
+  [/hackfleisch|mett|gehacktes/i, 1],
+  [/h[äa]hnchen|h[üu]hn|pute|truthahn|gefl[üu]gel/i, 2],
+  [/fisch|lachs|forelle|garnel|shrimp|thunfisch frisch/i, 2],
+  [/steak|rind|schwein|kalb|lamm|schnitzel|kotelett|gulasch|braten/i, 3],
+  [/wurst|aufschnitt|schinken|salami|speck|bacon/i, 5],
+  [/salat|rucola|spinat|kr[äa]uter|basilikum|petersilie/i, 4],
+  [/milch|sahne|schlagobers/i, 7],
+  [/joghurt|quark|skyr|frischk[äa]se/i, 10],
+  [/k[äa]se/i, 14],
+  [/ei\b|eier/i, 21],
+  [/brot|br[öo]tchen|toast/i, 4],
+  [/beere|himbeer|erdbeer|heidelbeer/i, 3],
+  [/obst|apfel|banane|birne|gem[üu]se|paprika|gurke|tomate|karotte|m[öo]hre/i, 6],
+];
+function suggestExpiry(text) {
+  const t = String(text || "");
+  for (const [re, days] of SHELF_LIFE) if (re.test(t)) return addDaysISO(todayISO(), days);
+  return null;
+}
+function daysUntil(iso) {
+  if (!iso) return null;
+  return Math.round((new Date(iso + "T00:00:00") - new Date(todayISO() + "T00:00:00")) / 86400000);
+}
+function mhdBadge(it) {
+  const d = daysUntil(it.expires_at);
+  const cls = d == null ? "" : (d < 0 ? "is-over" : (d <= 2 ? "is-soon" : ""));
+  const label = d == null ? "MHD" : (d < 0 ? "abgelaufen" : (d === 0 ? "heute" : (d === 1 ? "morgen" : "in " + d + " T")));
+  return `<span class="mhd ${cls}"><span class="mhd__label">${label}</span><input type="date" class="mhd__input" data-mhd="${it.id}" value="${it.expires_at || ""}" aria-label="Mindesthaltbarkeit"></span>`;
+}
+async function mutSetExpiry(id, iso) {
+  if (REMOTE) { await sb.from("backlog_items").update({ expires_at: iso }).eq("id", id); await remoteFetchAll(); }
+  else { const it = state.backlog.find(b => String(b.id) === String(id)); if (it) it.expires_at = iso; localSave(); }
+  renderAll();
+}
+function expiringOn(iso) { return (state.backlog || []).filter(b => b.expires_at === iso && !b.checked); }
+function expiryHTML(iso) {
+  const list = expiringOn(iso);
+  if (!list.length) return "";
+  const over = new Date(iso + "T00:00:00") < new Date(todayISO() + "T00:00:00");
+  return `<div class="cal-mhd ${over ? "is-over" : ""}">
+    <span class="cal-mhd__label">${over ? "⚠️ abgelaufen" : "⏳ läuft ab"}</span>
+    ${list.map(b => `<span class="cal-mhd__item">${esc(b.text)}</span>`).join("")}
+  </div>`;
+}
 
 /* ==========================================================================
    SCROLL-EFFEKTE
