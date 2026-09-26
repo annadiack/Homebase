@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Jost:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=30">
+<link rel="stylesheet" href="style.css?v=31">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="apple-touch-icon" href="icon.png?v=1">
 <link rel="icon" type="image/png" href="icon.png?v=1">
@@ -52,6 +52,71 @@
   .cost-src{ font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#F6D9AC;
     border:1px solid rgba(240,206,154,.45); border-radius:999px; padding:1px 7px; margin-left:6px; }
   .cost-note{ margin-top:10px; font-size:12px; color:rgba(245,237,228,.44); line-height:1.5; }
+  /* Tracker */
+  .tr-weekbar{ display:flex; align-items:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
+  .tr-week{ display:flex; gap:6px; flex:1 1 260px; }
+  .tr-day{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:8px 2px;
+    background:none; border:none; color:rgba(245,237,228,.6); }
+  .tr-day__dow{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .tr-day__dot{ width:26px; height:26px; border-radius:50%; border:1px solid rgba(240,206,154,.35);
+    display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .tr-day__dot.is-done{ background:linear-gradient(135deg,#F6D9AC,#E5B074); color:#211509; border-color:transparent; }
+  .tr-day.is-sel .tr-day__dow{ color:#F6D9AC; }
+  .tr-day.is-sel .tr-day__dot{ box-shadow:0 0 0 2px rgba(246,217,172,.55); }
+  .tr-day.is-today .tr-day__dow{ text-decoration:underline; }
+  .tr-datelabel{ margin-top:14px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(245,237,228,.55); }
+  .tr-kcal{ margin-top:10px; }
+  .tr-kcal__head{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .tr-kcal__big{ font-family:"Marcellus",serif; font-size:40px; color:#F6D9AC; text-shadow:0 0 16px rgba(244,214,166,.45); }
+  .tr-kcal__goal{ font-size:14px; color:rgba(245,237,228,.6); }
+  .tr-kcal__left{ margin-left:auto; font-size:12.5px; color:rgba(245,237,228,.55); }
+  .tr-bar{ height:8px; border-radius:999px; background:rgba(255,247,240,.10); overflow:hidden; margin-top:8px; }
+  .tr-bar i{ display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#F6D9AC,#E5B074); }
+  .tr-macros{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px; }
+  .tr-macro__label{ display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:rgba(245,237,228,.55); }
+  .tr-macro__val{ display:block; margin-top:4px; font-size:15px; color:#F5EDE4; }
+  .tr-macro__val small{ color:rgba(245,237,228,.45); }
+  .tr-bar--c i{ background:linear-gradient(90deg,#7FD8C4,#3FA98F); }
+  .tr-bar--f i{ background:linear-gradient(90deg,#C9A7F0,#8E6FD0); }
+  .tr-bar--p i{ background:linear-gradient(90deg,#F6C98A,#E09B4A); }
+  .tr-add{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; }
+  .tr-add select, .tr-add input[type="text"]{ font-family:inherit; font-size:14px; color:#F5EDE4;
+    background:rgba(255,247,240,.06); border:1px solid rgba(240,206,154,.32); border-radius:10px; padding:11px 13px; }
+  .tr-add select{ background:#241a12; }
+  .tr-add input[type="text"]{ flex:1 1 180px; min-width:0; }
+  .tr-add input::placeholder{ color:rgba(245,237,228,.4); }
+  .tr-photo{ cursor:pointer; }
+  .tr-hint{ margin-top:8px; font-size:12px; color:rgba(245,237,228,.44); line-height:1.5; }
+  .tr-meal{ margin-top:16px; }
+  .tr-meal__head{ display:flex; justify-content:space-between; font-size:13px; letter-spacing:.06em;
+    color:#F6D9AC; padding-bottom:6px; border-bottom:1px solid rgba(240,206,154,.22); }
+  .tr-meal__sum{ color:rgba(245,237,228,.6); }
+  .tr-entry{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid rgba(240,206,154,.10); }
+  .tr-entry__name{ flex:1; font-size:14.5px; color:#F5EDE4; min-width:0; }
+  .tr-entry__macros{ font-size:11.5px; color:rgba(245,237,228,.5); white-space:nowrap; }
+  .tr-empty{ padding:9px 0; font-size:13px; color:rgba(245,237,228,.38); }
+  .tr-planned{ margin-top:22px; padding-top:14px; border-top:1px solid rgba(240,206,154,.22); }
+  .tr-sub{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:rgba(245,237,228,.55); margin-bottom:8px; }
+  .tr-plan-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; font-size:14px; color:#F5EDE4; }
+  .tr-plan-row small{ color:#F6D9AC; }
+  .goals-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin:14px 0 16px; }
+  .goals-grid label{ display:flex; flex-direction:column; gap:6px; font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:rgba(245,237,228,.55); }
+  .goals-grid input{ font-family:inherit; font-size:15px; color:#F5EDE4; background:rgba(255,247,240,.06);
+    border:1px solid rgba(240,206,154,.32); border-radius:10px; padding:10px 12px; }
+  /* MHD */
+  .mhd{ position:relative; display:inline-flex; align-items:center; font-size:10.5px; letter-spacing:.06em;
+    color:rgba(245,237,228,.55); border:1px solid rgba(240,206,154,.30); border-radius:999px; padding:3px 9px; white-space:nowrap; }
+  .mhd.is-soon{ color:#F6D9AC; border-color:rgba(246,217,172,.7); }
+  .mhd.is-over{ color:#FFB4A2; border-color:rgba(255,180,162,.7); }
+  .mhd__input{ position:absolute; inset:0; opacity:0; width:100%; height:100%; border:none; background:none; }
+  .cal-mhd{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#F6D9AC; }
+  .cal-mhd.is-over{ color:#FFB4A2; }
+  .cal-mhd__label{ font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; }
+  .cal-mhd__item{ border:1px solid currentColor; border-radius:999px; padding:2px 9px; }
+  .cal-cell__mhd{ font-size:9.5px; line-height:1.2; color:#F6D9AC; border-left:2px solid #E5B074;
+    border-radius:3px; padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  @media (max-width:720px){ .tr-macros{ grid-template-columns:1fr; gap:10px; } }
   .receipt-item-row{ grid-template-columns:2fr 1fr 1fr 1fr !important; }
   @media (max-width:720px){ .receipt-item-row{ grid-template-columns:1fr !important; } }
 </style>
@@ -128,6 +193,11 @@
           <span class="hero-tile__icon">&#128221;</span>
           <span class="hero-tile__title">Notizen</span>
           <span class="hero-tile__meta" id="tileNotesMeta">&ndash;</span>
+        </button>
+        <button type="button" class="hero-tile" data-open-view="tracker">
+          <span class="hero-tile__icon">&#129367;</span>
+          <span class="hero-tile__title">Tracker</span>
+          <span class="hero-tile__meta" id="tileTrackerMeta">&ndash;</span>
         </button>
         <button type="button" class="hero-tile" data-open-view="guide">
           <span class="hero-tile__icon">&#129482;</span>
@@ -285,6 +355,62 @@
       </div>
     </div>
     <div class="notes-grid" id="notesGrid"></div>
+  </div>
+</section>
+
+<!-- ================= TRACKER ================= -->
+<section class="panel view" id="view-tracker">
+  <div class="bg" data-speed="0.14"></div>
+  <div class="veil"></div>
+  <div class="panel__content">
+    <div class="widget widget--head reveal">
+      <p class="eyebrow">Ern&auml;hrung</p>
+      <h2 class="section__title">Tracker.</h2>
+      <p class="section__desc">Kalorien und Makros f&uuml;r den Tag. Eintragen per Text, Foto oder direkt aus deinem Wochenplan.</p>
+      <div class="tr-weekbar">
+        <div class="tr-week" id="trWeek"></div>
+        <button type="button" class="btn btn--outline btn--small" id="trToday">Heute</button>
+      </div>
+      <p class="tr-datelabel" id="trDateLabel"></p>
+      <div class="tr-kcal" id="trKcal"></div>
+      <div class="tr-macros" id="trMacros"></div>
+    </div>
+
+    <div class="widget reveal">
+      <h3 class="recipes-title">Eintragen</h3>
+      <div class="tr-add">
+        <select id="trMeal" aria-label="Mahlzeit">
+          <option value="breakfast">Fr&uuml;hst&uuml;ck</option>
+          <option value="lunch">Mittagessen</option>
+          <option value="dinner">Abendessen</option>
+          <option value="snack" selected>Snack</option>
+        </select>
+        <input type="text" id="trInput" placeholder="z.B. 2 Scheiben Brot mit K&auml;se">
+        <button type="button" class="btn btn--gold btn--small" id="trAddBtn">+ Hinzuf&uuml;gen</button>
+        <label class="btn btn--outline btn--small tr-photo">&#128247; Foto
+          <input type="file" id="trPhoto" accept="image/*" hidden>
+        </label>
+      </div>
+      <p class="modal-note" id="trNote"></p>
+      <p class="tr-hint">Foto vom Teller, von der N&auml;hrwerttabelle oder vom Strichcode &mdash; Produkte werden in der offenen Datenbank Open Food Facts nachgeschlagen.</p>
+    </div>
+
+    <div class="widget reveal">
+      <h3 class="recipes-title">Tagebuch</h3>
+      <div id="trDiary"></div>
+    </div>
+
+    <div class="widget reveal">
+      <h3 class="recipes-title">Tagesziele</h3>
+      <div class="goals-grid">
+        <label>kcal<input type="number" id="goalKcal" min="0"></label>
+        <label>Kohlenhydrate (g)<input type="number" id="goalCarbs" min="0"></label>
+        <label>Fett (g)<input type="number" id="goalFat" min="0"></label>
+        <label>Protein (g)<input type="number" id="goalProtein" min="0"></label>
+      </div>
+      <button type="button" class="btn btn--gold btn--small" id="saveGoalsBtn">Ziele speichern</button>
+      <p class="modal-note" id="goalsNote"></p>
+    </div>
   </div>
 </section>
 
@@ -466,8 +592,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="config.js?v=30"></script>
-<script src="script.js?v=30"></script>
+<script src="config.js?v=31"></script>
+<script src="script.js?v=31"></script>
 <script src="linkify.js?v=1"></script>
 </body>
 </html>
