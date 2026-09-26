@@ -1948,6 +1948,40 @@ function renderTracker() {
 
   const td = document.getElementById("trToday");
   if (td) td.addEventListener("click", () => { trackerDate = todayISO(); renderTracker(); });
+
+  /* Umschalter: schaetzen lassen <-> selbst eintragen */
+  const auto = document.getElementById("trAuto");
+  const manual = document.getElementById("trManual");
+  document.querySelectorAll("[data-tr-mode]").forEach(b => b.addEventListener("click", () => {
+    const m = b.dataset.trMode;
+    document.querySelectorAll("[data-tr-mode]").forEach(x => x.classList.toggle("is-active", x === b));
+    if (auto) auto.hidden = m !== "auto";
+    if (manual) manual.hidden = m !== "manual";
+    if (note) note.textContent = "";
+  }));
+
+  /* Eigeneingabe mit bekannten Werten */
+  const mAdd = document.getElementById("mAddBtn");
+  if (mAdd) {
+    const num = id => { const el = document.getElementById(id); return el && el.value !== "" ? +el.value : 0; };
+    const addManual = async () => {
+      const nameEl = document.getElementById("mName");
+      const name = (nameEl.value || "").trim();
+      if (!name) { note.textContent = "Bitte einen Namen eingeben."; return; }
+      const kcal = num("mKcal"), carbs = num("mCarbs"), fat = num("mFat"), protein = num("mProtein");
+      if (!kcal && !carbs && !fat && !protein) { note.textContent = "Bitte mindestens kcal oder einen Makro-Wert eingeben."; return; }
+      await mutAddFood({ name, kcal, carbs, fat, protein, meal: currentMeal(), source: "manual" });
+      nameEl.value = "";
+      ["mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+      note.textContent = "Eingetragen.";
+      nameEl.focus();
+    };
+    mAdd.addEventListener("click", addManual);
+    ["mName", "mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") addManual(); });
+    });
+  }
 })();
 
 /* ==========================================================================
