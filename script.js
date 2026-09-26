@@ -6,11 +6,14 @@ const DEFAULT_CATS = ["Obst & Gemüse", "Gläser & Konserven", "Kräuter & Gewü
 
 /* ---------- Helfer ---------- */
 function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-function todayISO() { return new Date().toISOString().slice(0, 10); }
-function addDaysISO(iso, n) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
-function shiftMonthISO(iso, n) { const d = new Date(iso + "T00:00:00"); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 10); }
-function firstOfMonthISO(iso) { const d = new Date(iso + "T00:00:00"); d.setDate(1); return d.toISOString().slice(0, 10); }
-function mondayOfISO(iso) { const d = new Date(iso + "T00:00:00"); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.toISOString().slice(0, 10); }
+/* Datum immer LOKAL bilden. toISOString() rechnet in UTC um und liefert in
+   Zeitzonen oestlich von Greenwich den Vortag - das hat die Wochenleiste verschoben. */
+function isoOf(d) { const p = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
+function todayISO() { return isoOf(new Date()); }
+function addDaysISO(iso, n) { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return isoOf(d); }
+function shiftMonthISO(iso, n) { const d = new Date(iso + "T00:00:00"); d.setMonth(d.getMonth() + n); return isoOf(d); }
+function firstOfMonthISO(iso) { const d = new Date(iso + "T00:00:00"); d.setDate(1); return isoOf(d); }
+function mondayOfISO(iso) { const d = new Date(iso + "T00:00:00"); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return isoOf(d); }
 function formatDayLabel(iso) {
   const d = new Date(iso + "T00:00:00");
   return `${d.toLocaleDateString("de-DE", { weekday: "long" })}, ${d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}`;
@@ -54,7 +57,7 @@ const REMOTE = !!sb;
 const FUNCTIONS_BASE = cfg.SUPABASE_URL ? `${cfg.SUPABASE_URL}/functions/v1` : "";
 const STORAGE_KEY = "homebase_state_v7";
 
-let state = { lists: [], categories: [], shopping: [], backlog: [], calendar: [], recipes: [], notes: [], locations: [], foodLog: [], goals: null };
+let state = { lists: [], categories: [], shopping: [], backlog: [], calendar: [], recipes: [], notes: [], locations: [], foodLog: [], goals: null, foods: [] };
 let trackerDate = null;
 let noteQuery = "";
 let expandedNote = null;
@@ -92,7 +95,7 @@ function localSave() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
 /* ---------- Supabase-Modus ---------- */
 async function remoteFetchAll() {
-  const [lists, cats, shop, backlog, cal, recipes, notes, locations, foodLog, goals] = await Promise.all([
+  const [lists, cats, shop, backlog, cal, recipes, notes, locations, foodLog, goals, foods] = await Promise.all([
     sb.from("shopping_lists").select("*").order("sort_order"),
     sb.from("categories").select("*").order("sort_order"),
     sb.from("shopping_items").select("*").order("created_at"),
@@ -103,6 +106,7 @@ async function remoteFetchAll() {
     sb.from("locations").select("*"),
     sb.from("food_log").select("*").order("created_at"),
     sb.from("nutrition_goals").select("*").eq("id", "default").maybeSingle(),
+    sb.from("foods").select("*").order("created_at", { ascending: false }),
   ]);
   const err = lists.error || cats.error || shop.error || backlog.error || cal.error || recipes.error || notes.error || locations.error;
   if (err) throw err;
@@ -116,6 +120,7 @@ async function remoteFetchAll() {
   state.notes = notes.data || [];
   state.foodLog = (foodLog && foodLog.data) || [];
   state.goals = (goals && goals.data) || null;
+  state.foods = (foods && foods.data) || [];
 }
 
 let refreshTimer = null;
@@ -1764,6 +1769,7 @@ async function mutAddFood(entry) {
     log_date: entry.log_date || trackerISO(), meal: entry.meal || "snack",
     name: tidyName(entry.name), kcal: Math.round(+entry.kcal || 0),
     carbs: r1(+entry.carbs || 0), fat: r1(+entry.fat || 0), protein: r1(+entry.protein || 0),
+    grams: entry.grams != null && entry.grams !== "" ? r1(+entry.grams) : null,
     source: entry.source || "manual"
   };
   if (REMOTE) { await sb.from("food_log").insert(row); await remoteFetchAll(); }
@@ -1780,7 +1786,11 @@ async function mutSaveGoals(g) {
   else { state.goals = { id: "default", ...g }; localSave(); }
   renderAll();
 }
+function myFoodsPayload() {
+  return (state.foods || []).map(f => ({ name: f.name, brand: f.brand, kcal100: +f.kcal100, carbs100: +f.carbs100, fat100: +f.fat100, protein100: +f.protein100 }));
+}
 async function callAnalyzeFood(payload) {
+  if (!payload.mode && !payload.myFoods) payload = { ...payload, myFoods: myFoodsPayload() };
   const res = await fetch(`${FUNCTIONS_BASE}/analyze-food`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
@@ -1803,9 +1813,14 @@ function plannedHTML(iso) {
     ${entries.map(e => {
       const r = e.recipe_id ? state.recipes.find(x => x.id === e.recipe_id) : null;
       const m = r ? recipeMacros(r) : { kcal: 0 };
-      return `<div class="tr-plan-row">
-        <span>${esc(shortTitle(e.meal))}${m.kcal ? ` <small>${m.kcal} kcal</small>` : ""}</span>
-        <button type="button" class="btn btn--outline btn--small" data-take-plan="${e.id}">Übernehmen</button>
+      const serv = (r && r.servings) || 1;
+      return `<div class="tr-plan">
+        <div class="tr-plan__top"><span>${esc(shortTitle(e.meal))}</span>${m.kcal ? `<small>${m.kcal} kcal gesamt</small>` : ""}</div>
+        <div class="tr-plan__ctl">
+          <label>Rezept ergibt<input type="number" min="1" step="1" value="${serv}" data-plan-serv="${e.id}"></label>
+          <label>ich esse<input type="number" min="0.25" step="0.25" value="1" data-plan-eat="${e.id}"></label>
+          <button type="button" class="btn btn--outline btn--small" data-take-plan="${e.id}">Übernehmen</button>
+        </div>
       </div>`;
     }).join("")}
   </div>`;
@@ -1814,30 +1829,93 @@ async function takePlannedRecipe(entryId) {
   const e = (state.calendar || []).find(x => String(x.id) === String(entryId));
   if (!e) return;
   const note = document.getElementById("trNote");
+  const servEl = document.querySelector(`[data-plan-serv="${entryId}"]`);
+  const eatEl = document.querySelector(`[data-plan-eat="${entryId}"]`);
+  const servings = Math.max(1, +(servEl && servEl.value) || 1);
+  const eaten = Math.max(0.01, +(eatEl && eatEl.value) || 1);
   const r = e.recipe_id ? state.recipes.find(x => x.id === e.recipe_id) : null;
   let m = r ? recipeMacros(r) : { kcal: 0 };
+
   if (!m.kcal || m.carbs == null || m.fat == null || m.protein == null) {
-    if (note) note.textContent = "Makros werden ergänzt…";
+    if (note) note.textContent = "Nährwerte des Rezepts werden ergänzt…";
     try {
       const ings = r && r.ingredients && r.ingredients.length ? r.ingredients.map(i => i.text).join(", ") : e.meal;
-      const res = await callAnalyzeFood({ text: `Rezept "${shortTitle(e.meal)}" mit: ${ings}. Eine Portion.` });
-      const it = (res.items || [])[0];
-      if (it) {
+      const res = await callAnalyzeFood({ text: `Gesamtes Rezept "${shortTitle(e.meal)}" mit allen Zutaten: ${ings}. Werte für das GESAMTE Rezept, nicht pro Portion.` });
+      const it = (res.items || []).reduce((s, x) => ({
+        kcal: s.kcal + (+x.kcal || 0), carbs: s.carbs + (+x.carbs || 0),
+        fat: s.fat + (+x.fat || 0), protein: s.protein + (+x.protein || 0)
+      }), { kcal: 0, carbs: 0, fat: 0, protein: 0 });
+      if (it.kcal) {
         m = { kcal: m.kcal || it.kcal, carbs: it.carbs, fat: it.fat, protein: it.protein };
         if (r && REMOTE) { try { await sb.from("recipes").update({ calories: m.kcal, carbs: m.carbs, fat: m.fat, protein: m.protein }).eq("id", r.id); } catch (err) {} }
       }
     } catch (err) { console.warn(err); }
   }
-  await mutAddFood({ name: shortTitle(e.meal), kcal: m.kcal, carbs: m.carbs, fat: m.fat, protein: m.protein, meal: currentMeal(), source: "recipe" });
-  if (note) note.textContent = "Rezept übernommen.";
+  if (r && REMOTE && (r.servings || 1) !== servings) { try { await sb.from("recipes").update({ servings }).eq("id", r.id); } catch (err) {} }
+
+  const f = eaten / servings;
+  await mutAddFood({
+    name: shortTitle(e.meal) + " (" + (eaten === 1 ? "1 Portion" : eaten + " Portionen") + " von " + servings + ")",
+    kcal: (m.kcal || 0) * f, carbs: (m.carbs || 0) * f, fat: (m.fat || 0) * f, protein: (m.protein || 0) * f,
+    meal: currentMeal(), source: "recipe"
+  });
+  if (note) note.textContent = "Übernommen: " + Math.round((m.kcal || 0) * f) + " kcal.";
 }
 function currentMeal() {
   const sel = document.getElementById("trMeal");
   return sel ? sel.value : "snack";
 }
 
+/* ---- Eigene Lebensmittel (Stammdaten, Werte je 100 g) ---- */
+async function mutAddFoodItem(f) {
+  const row = {
+    name: tidyName(f.name), name_key: mKeyName(f.name), brand: f.brand || null,
+    kcal100: r1(+f.kcal100 || 0), carbs100: r1(+f.carbs100 || 0),
+    fat100: r1(+f.fat100 || 0), protein100: r1(+f.protein100 || 0),
+    source: f.source || "manual"
+  };
+  if (REMOTE) { await sb.from("foods").insert(row); await remoteFetchAll(); }
+  else { state.foods.unshift({ id: uid("fd"), ...row }); localSave(); }
+  renderAll();
+}
+async function mutDeleteFoodItem(id) {
+  if (REMOTE) { await sb.from("foods").delete().eq("id", id); await remoteFetchAll(); }
+  else { state.foods = state.foods.filter(f => String(f.id) !== String(id)); localSave(); }
+  renderAll();
+}
+function renderFoods() {
+  const box = document.getElementById("foodsList");
+  if (!box) return;
+  const list = state.foods || [];
+  box.innerHTML = list.length ? list.map(f => `
+    <div class="food-row">
+      <button type="button" class="food-row__use" data-use-food="${f.id}">
+        <span class="food-row__name">${esc(f.name)}${f.brand ? ` <small>${esc(f.brand)}</small>` : ""}</span>
+        <span class="food-row__vals">je 100 g · ${r1(+f.kcal100)} kcal · K ${r1(+f.carbs100)} · F ${r1(+f.fat100)} · P ${r1(+f.protein100)}</span>
+      </button>
+      <button type="button" class="item-delete-btn" data-del-food-item="${f.id}" aria-label="Löschen">×</button>
+    </div>`).join("") : `<p class="tr-empty">Noch keine eigenen Lebensmittel. Fotografiere eine Nährwerttabelle oder speichere Werte beim Eintragen.</p>`;
+  box.querySelectorAll("[data-del-food-item]").forEach(b => b.addEventListener("click", () => mutDeleteFoodItem(b.dataset.delFoodItem)));
+  box.querySelectorAll("[data-use-food]").forEach(b => b.addEventListener("click", () => {
+    const f = state.foods.find(x => String(x.id) === b.dataset.useFood); if (!f) return;
+    document.querySelectorAll("[data-tr-mode]").forEach(x => x.classList.toggle("is-active", x.dataset.trMode === "manual"));
+    const auto = document.getElementById("trAuto"), man = document.getElementById("trManual");
+    if (auto) auto.hidden = true;
+    if (man) man.hidden = false;
+    document.getElementById("mName").value = f.name;
+    document.getElementById("mKcal").value = r1(+f.kcal100);
+    document.getElementById("mCarbs").value = r1(+f.carbs100);
+    document.getElementById("mFat").value = r1(+f.fat100);
+    document.getElementById("mProtein").value = r1(+f.protein100);
+    const per = document.getElementById("mPer100"); if (per) per.checked = true;
+    const g = document.getElementById("mGrams"); if (g) { g.value = ""; g.focus(); }
+    const note = document.getElementById("trNote"); if (note) note.textContent = "Nur noch die Menge in Gramm eintragen.";
+  }));
+}
+
 /* ---- Anzeige ---- */
 function renderTracker() {
+  renderFoods();
   const view = document.getElementById("view-tracker");
   if (!view) return;
   const iso = trackerISO(), g = goalValues(), t = foodTotals(iso);
@@ -1960,7 +2038,7 @@ function renderTracker() {
     if (note) note.textContent = "";
   }));
 
-  /* Eigeneingabe mit bekannten Werten */
+  /* Eigeneingabe: Gramm + "je 100 g" + optional als Lebensmittel merken */
   const mAdd = document.getElementById("mAddBtn");
   if (mAdd) {
     const num = id => { const el = document.getElementById(id); return el && el.value !== "" ? +el.value : 0; };
@@ -1968,20 +2046,63 @@ function renderTracker() {
       const nameEl = document.getElementById("mName");
       const name = (nameEl.value || "").trim();
       if (!name) { note.textContent = "Bitte einen Namen eingeben."; return; }
-      const kcal = num("mKcal"), carbs = num("mCarbs"), fat = num("mFat"), protein = num("mProtein");
+      const grams = num("mGrams");
+      const per100 = !!(document.getElementById("mPer100") || {}).checked;
+      let kcal = num("mKcal"), carbs = num("mCarbs"), fat = num("mFat"), protein = num("mProtein");
       if (!kcal && !carbs && !fat && !protein) { note.textContent = "Bitte mindestens kcal oder einen Makro-Wert eingeben."; return; }
-      await mutAddFood({ name, kcal, carbs, fat, protein, meal: currentMeal(), source: "manual" });
+
+      // Werte je 100 g auf die gegessene Menge umrechnen
+      const factor = per100 ? (grams > 0 ? grams / 100 : 1) : 1;
+      const eaten = { kcal: kcal * factor, carbs: carbs * factor, fat: fat * factor, protein: protein * factor };
+
+      const label = grams > 0 ? name + " (" + r1(grams) + " g)" : name;
+      await mutAddFood({ name: label, ...eaten, grams: grams || null, meal: currentMeal(), source: "manual" });
+
+      // Optional als eigenes Lebensmittel speichern (immer je 100 g)
+      const saveEl = document.getElementById("mSaveFood");
+      if (saveEl && saveEl.checked) {
+        let p100 = null;
+        if (per100) p100 = { kcal100: kcal, carbs100: carbs, fat100: fat, protein100: protein };
+        else if (grams > 0) { const k = 100 / grams; p100 = { kcal100: kcal * k, carbs100: carbs * k, fat100: fat * k, protein100: protein * k }; }
+        if (p100) { await mutAddFoodItem({ name, ...p100, source: "manual" }); note.textContent = "Eingetragen und als eigenes Lebensmittel gespeichert."; }
+        else { note.textContent = "Eingetragen. Zum Speichern als Lebensmittel bitte Gramm angeben oder \u201eje 100 g\u201c ankreuzen."; }
+        saveEl.checked = false;
+      } else {
+        note.textContent = "Eingetragen.";
+      }
+
       nameEl.value = "";
-      ["mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
-      note.textContent = "Eingetragen.";
+      ["mGrams", "mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
       nameEl.focus();
     };
     mAdd.addEventListener("click", addManual);
-    ["mName", "mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => {
+    ["mName", "mGrams", "mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") addManual(); });
     });
   }
+
+  /* Nährwerttabelle abfotografieren -> als eigenes Lebensmittel speichern */
+  const lbl = document.getElementById("foodLabelPhoto");
+  if (lbl) lbl.addEventListener("change", async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const fnote = document.getElementById("foodsNote");
+    if (!FUNCTIONS_BASE) { if (fnote) fnote.textContent = "Braucht eine Supabase-Verbindung."; return; }
+    if (fnote) fnote.textContent = "Etikett wird gelesen…";
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await callAnalyzeFood({ image: base64, mimeType: file.type || "image/jpeg", mode: "label" });
+      if (!res || (!res.kcal100 && !res.protein100 && !res.carbs100 && !res.fat100)) {
+        if (fnote) fnote.textContent = res && res.note ? res.note : "Nährwerttabelle nicht lesbar — bitte formatfüllend und scharf fotografieren.";
+        return;
+      }
+      await mutAddFoodItem({ name: res.name || "Eigenes Lebensmittel", brand: res.brand || null,
+        kcal100: res.kcal100, carbs100: res.carbs100, fat100: res.fat100, protein100: res.protein100,
+        source: res.source || "label" });
+      if (fnote) fnote.textContent = (res.name || "Lebensmittel") + " gespeichert — wird ab jetzt automatisch verwendet.";
+    } catch (err) { if (fnote) fnote.textContent = "Etikett konnte nicht gelesen werden."; console.warn(err); }
+    finally { lbl.value = ""; }
+  });
 })();
 
 /* ==========================================================================
