@@ -413,6 +413,26 @@ button{ font-family:var(--font-body); cursor:pointer; }
     text-transform:uppercase; color:rgba(245,237,228,.55); }
   .tr-manual__grid input{ font-family:inherit; font-size:15px; color:#F5EDE4; background:rgba(255,247,240,.06);
     border:1px solid rgba(240,206,154,.32); border-radius:10px; padding:10px 12px; }
+  .tr-checks{ display:flex; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+  .tr-check{ display:inline-flex; align-items:center; gap:8px; font-size:13px; color:rgba(245,237,228,.75); cursor:pointer; }
+  .tr-check input{ width:18px; height:18px; accent-color:#E5B074; }
+  .foods-list{ display:flex; flex-direction:column; margin-top:14px; }
+  .food-row{ display:flex; align-items:center; gap:8px; border-bottom:1px solid rgba(240,206,154,.10); }
+  .food-row:last-child{ border-bottom:none; }
+  .food-row__use{ flex:1; display:flex; flex-direction:column; gap:3px; text-align:left; background:none;
+    border:none; padding:11px 0; color:#F5EDE4; min-width:0; }
+  .food-row__name{ font-size:14.5px; }
+  .food-row__name small{ color:rgba(245,237,228,.5); }
+  .food-row__vals{ font-size:11.5px; color:#F6D9AC; }
+  .tr-plan{ padding:10px 0; border-bottom:1px solid rgba(240,206,154,.10); }
+  .tr-plan:last-child{ border-bottom:none; }
+  .tr-plan__top{ display:flex; justify-content:space-between; gap:10px; font-size:14px; color:#F5EDE4; }
+  .tr-plan__top small{ color:#F6D9AC; white-space:nowrap; }
+  .tr-plan__ctl{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px; margin-top:8px; }
+  .tr-plan__ctl label{ display:flex; flex-direction:column; gap:4px; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; color:rgba(245,237,228,.55); }
+  .tr-plan__ctl input{ width:74px; font-family:inherit; font-size:14px; color:#F5EDE4;
+    background:rgba(255,247,240,.06); border:1px solid rgba(240,206,154,.32); border-radius:9px; padding:8px 10px; }
   .tr-add{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; }
   .tr-add[hidden]{ display:none; }
   .tr-add select, .tr-add input[type="text"]{ font-family:inherit; font-size:14px; color:#F5EDE4;
@@ -735,18 +755,35 @@ button{ font-family:var(--font-body); cursor:pointer; }
       </div>
 
       <div class="tr-manual" id="trManual" hidden>
-        <input type="text" id="mName" placeholder="Name, z.B. Proteinriegel">
+        <input type="text" id="mName" placeholder="Name, z.B. Proteink&auml;se">
         <div class="tr-manual__grid">
+          <label>Menge (g)<input type="number" id="mGrams" min="0" step="1" inputmode="numeric" placeholder="z.B. 40"></label>
           <label>kcal<input type="number" id="mKcal" min="0" inputmode="numeric" placeholder="0"></label>
           <label>Kohlenhydrate (g)<input type="number" id="mCarbs" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
           <label>Fett (g)<input type="number" id="mFat" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
           <label>Protein (g)<input type="number" id="mProtein" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+        </div>
+        <div class="tr-checks">
+          <label class="tr-check"><input type="checkbox" id="mPer100"> Werte gelten je 100 g</label>
+          <label class="tr-check"><input type="checkbox" id="mSaveFood"> Als eigenes Lebensmittel merken</label>
         </div>
         <button type="button" class="btn btn--gold btn--small" id="mAddBtn">+ Hinzuf&uuml;gen</button>
       </div>
 
       <p class="modal-note" id="trNote"></p>
       <p class="tr-hint">&bdquo;Sch&auml;tzen lassen&ldquo;: Text oder Foto (Teller, N&auml;hrwerttabelle, Strichcode) &mdash; Produkte werden in Open Food Facts nachgeschlagen. &bdquo;Selbst eintragen&ldquo;: du gibst die Werte direkt ein, nichts wird gesch&auml;tzt.</p>
+    </div>
+
+    <div class="widget reveal">
+      <div class="recipes-head">
+        <h3 class="recipes-title">Meine Lebensmittel</h3>
+        <label class="btn btn--gold btn--small tr-photo">&#128247; N&auml;hrwerttabelle fotografieren
+          <input type="file" id="foodLabelPhoto" accept="image/*" hidden>
+        </label>
+      </div>
+      <p class="section__desc">Einmal gespeichert, werden diese Werte beim Eintragen immer bevorzugt &mdash; auch wenn du nur &bdquo;K&auml;se&ldquo; schreibst. Antippen f&uuml;llt die Eigeneingabe aus, du gibst dann nur die Gramm an.</p>
+      <div id="foodsList" class="foods-list"></div>
+      <p class="modal-note" id="foodsNote"></p>
     </div>
 
     <div class="widget reveal">
@@ -946,8 +983,8 @@ button{ font-family:var(--font-body); cursor:pointer; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="config.js?v=32"></script>
-<script src="script.js?v=32"></script>
+<script src="config.js?v=33"></script>
+<script src="script.js?v=33"></script>
 <script src="linkify.js?v=1"></script>
 </body>
 </html>
