@@ -94,33 +94,44 @@ function localLoad() {
 function localSave() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
 /* ---------- Supabase-Modus ---------- */
+let lastSyncProblem = "";
 async function remoteFetchAll() {
-  const [lists, cats, shop, backlog, cal, recipes, notes, locations, foodLog, goals, foods] = await Promise.all([
-    sb.from("shopping_lists").select("*").order("sort_order"),
-    sb.from("categories").select("*").order("sort_order"),
-    sb.from("shopping_items").select("*").order("created_at"),
-    sb.from("backlog_items").select("*").order("created_at"),
-    sb.from("calendar_entries").select("*").order("plan_date"),
-    sb.from("recipes").select("*").order("created_at"),
-    sb.from("notes").select("*").order("updated_at", { ascending: false }),
-    sb.from("locations").select("*"),
-    sb.from("food_log").select("*").order("created_at"),
-    sb.from("nutrition_goals").select("*").eq("id", "default").maybeSingle(),
-    sb.from("foods").select("*").order("created_at", { ascending: false }),
-  ]);
-  const err = lists.error || cats.error || shop.error || backlog.error || cal.error || recipes.error || notes.error || locations.error;
-  if (err) throw err;
-  state.locations = locations.data || [];
-  state.lists = lists.data || [];
-  state.categories = cats.data || [];
-  state.shopping = shop.data || [];
-  state.backlog = backlog.data || [];
-  state.calendar = cal.data || [];
-  state.recipes = (recipes.data || []).map(r => ({ ...r, ingredients: r.ingredients || [] }));
-  state.notes = notes.data || [];
-  state.foodLog = (foodLog && foodLog.data) || [];
-  state.goals = (goals && goals.data) || null;
-  state.foods = (foods && foods.data) || [];
+  const q = [
+    ["lists", () => sb.from("shopping_lists").select("*").order("sort_order")],
+    ["categories", () => sb.from("categories").select("*").order("sort_order")],
+    ["shopping", () => sb.from("shopping_items").select("*").order("created_at")],
+    ["backlog", () => sb.from("backlog_items").select("*").order("created_at")],
+    ["calendar", () => sb.from("calendar_entries").select("*").order("plan_date")],
+    ["recipes", () => sb.from("recipes").select("*").order("created_at")],
+    ["notes", () => sb.from("notes").select("*").order("updated_at", { ascending: false })],
+    ["locations", () => sb.from("locations").select("*")],
+    ["foodLog", () => sb.from("food_log").select("*").order("created_at")],
+    ["goals", () => sb.from("nutrition_goals").select("*").eq("id", "default").maybeSingle()],
+    ["foods", () => sb.from("foods").select("*").order("created_at", { ascending: false })],
+  ];
+  const results = await Promise.allSettled(q.map(([, fn]) => fn()));
+  const data = {}, failed = [];
+  results.forEach((res, i) => {
+    const key = q[i][0];
+    if (res.status === "fulfilled" && !res.value.error) data[key] = res.value.data;
+    else { failed.push(key); console.warn("Sync-Problem bei", key, res.status === "fulfilled" ? res.value.error : res.reason); }
+  });
+  // Ohne diese drei ist die App nicht brauchbar -> echter Fehler
+  const core = ["lists", "categories", "shopping"];
+  if (core.some(k => failed.includes(k))) throw new Error("Kerndaten nicht ladbar: " + failed.join(", "));
+
+  if (data.locations) state.locations = data.locations;
+  state.lists = data.lists || [];
+  state.categories = data.categories || [];
+  state.shopping = data.shopping || [];
+  if (data.backlog) state.backlog = data.backlog;
+  if (data.calendar) state.calendar = data.calendar;
+  if (data.recipes) state.recipes = data.recipes.map(r => ({ ...r, ingredients: r.ingredients || [] }));
+  if (data.notes) state.notes = data.notes;
+  if (data.foodLog) state.foodLog = data.foodLog;
+  if ("goals" in data) state.goals = data.goals || null;
+  if (data.foods) state.foods = data.foods;
+  lastSyncProblem = failed.length ? failed.join(", ") : "";
 }
 
 let refreshTimer = null;
@@ -1016,12 +1027,44 @@ function renderAll() {
   renderTracker();
   if (typeof renderLocationMarkers === "function") renderLocationMarkers();
 }
-function renderSyncBadge(ok) {
+function renderSyncBadge(ok, detail) {
   const b = document.getElementById("syncBadge");
-  if (REMOTE && ok) { b.textContent = "● Live-Sync aktiv"; b.classList.add("is-live"); }
-  else if (REMOTE && !ok) { b.textContent = "○ Sync-Fehler — lokal"; b.classList.remove("is-live"); }
-  else { b.textContent = "○ Lokal (nur dieses Gerät)"; b.classList.remove("is-live"); }
+  if (!b) return;
+  b.style.cursor = "pointer";
+  b.title = "Antippen, um neu zu verbinden";
+  if (REMOTE && ok) {
+    b.textContent = lastSyncProblem ? "● Sync aktiv (ohne " + lastSyncProblem + ")" : "● Live-Sync aktiv";
+    b.classList.add("is-live"); b.style.color = "";
+  } else if (REMOTE && !ok) {
+    b.textContent = "⚠ Kein Sync — " + (detail || "unbekannt") + " · antippen";
+    b.classList.remove("is-live"); b.style.color = "#FFB4A2";
+  } else if (!window.supabase) {
+    b.textContent = "⚠ Sync-Bibliothek blockiert · antippen";
+    b.classList.remove("is-live"); b.style.color = "#FFB4A2";
+  } else {
+    b.textContent = "○ Lokal — config.js fehlt";
+    b.classList.remove("is-live"); b.style.color = "#FFB4A2";
+  }
 }
+function shortErr(e) {
+  const m = (e && (e.message || e.error_description || e.details)) || String(e || "");
+  return m.length > 60 ? m.slice(0, 60) + "…" : m;
+}
+/* Unerwartete Fehler sichtbar machen statt stumm haengen zu bleiben */
+window.addEventListener("error", ev => {
+  const b = document.getElementById("syncBadge");
+  if (b && /verbinde/i.test(b.textContent)) {
+    b.textContent = "⚠ Skriptfehler: " + shortErr(ev.message || ev.error);
+    b.style.color = "#FFB4A2";
+  }
+});
+window.addEventListener("unhandledrejection", ev => {
+  const b = document.getElementById("syncBadge");
+  if (b && /verbinde/i.test(b.textContent)) {
+    b.textContent = "⚠ Fehler: " + shortErr(ev.reason);
+    b.style.color = "#FFB4A2";
+  }
+});
 
 /* ==========================================================================
    AKTIONEN: neue Liste, Kategorie, Liste abschließen, Übernehmen, Historie
@@ -2239,16 +2282,43 @@ function initHomeHead() {
 /* ==========================================================================
    INIT
    ========================================================================== */
+async function connect() {
+  if (!REMOTE) { localLoad(); renderSyncBadge(false); return; }
+  try {
+    await remoteFetchAll();
+    remoteSubscribe();
+    renderSyncBadge(true);
+  } catch (e) {
+    console.warn("Supabase nicht erreichbar, Lokal-Modus:", e);
+    localLoad();
+    renderSyncBadge(false, shortErr(e));
+  }
+}
 async function init() {
-  if (REMOTE) {
-    try { await remoteFetchAll(); remoteSubscribe(); renderSyncBadge(true); }
-    catch (e) { console.warn("Supabase nicht erreichbar, Lokal-Modus:", e); localLoad(); renderSyncBadge(false); }
-  } else { localLoad(); renderSyncBadge(false); }
-  ensureActiveList();
-  renderAll();
-  renderProspekte();
-  openView("dashboard");
-  initScrollFX();
-  initHomeHead();
+  try {
+    await connect();
+  } catch (e) {
+    console.warn(e);
+    renderSyncBadge(false, shortErr(e));
+  }
+  try {
+    ensureActiveList();
+    renderAll();
+    renderProspekte();
+    openView("dashboard");
+    initScrollFX();
+    initHomeHead();
+  } catch (e) {
+    console.warn("Render-Fehler:", e);
+    const b = document.getElementById("syncBadge");
+    if (b) { b.textContent = "⚠ Anzeigefehler: " + shortErr(e); b.style.color = "#FFB4A2"; }
+  }
+  const badge = document.getElementById("syncBadge");
+  if (badge) badge.addEventListener("click", async () => {
+    badge.textContent = "○ verbinde neu…";
+    badge.style.color = "";
+    await connect();
+    try { renderAll(); } catch (e) { console.warn(e); }
+  });
 }
 document.addEventListener("DOMContentLoaded", init);
