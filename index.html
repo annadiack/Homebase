@@ -401,9 +401,8 @@ button{ font-family:var(--font-body); cursor:pointer; }
   .tr-mealrow{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
   .tr-mealrow select{ font-family:inherit; font-size:14px; color:#F5EDE4; background:#241a12;
     border:1px solid rgba(240,206,154,.32); border-radius:999px; padding:10px 14px; }
-  .chat{ margin-top:14px; max-height:46vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
-    padding:14px; border-radius:14px; background:rgba(255,247,240,.04); border:1px solid rgba(240,206,154,.18); }
-  .chat:empty{ display:none; }
+  .chat{ margin-top:14px; min-height:220px; max-height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
+    padding:16px; border-radius:16px; background:rgba(255,247,240,.04); border:1px solid rgba(240,206,154,.18); }
   .bub{ max-width:86%; padding:10px 13px; border-radius:14px; font-size:14px; line-height:1.5; white-space:pre-wrap; }
   .bub--me{ align-self:flex-end; background:linear-gradient(135deg,#F6D9AC,#E5B074); color:#211509; border-bottom-right-radius:4px; }
   .bub--ai{ align-self:flex-start; background:rgba(255,247,240,.07); border:1px solid rgba(240,206,154,.22);
@@ -419,10 +418,18 @@ button{ font-family:var(--font-body); cursor:pointer; }
   .cp-row span:last-child{ color:#F6D9AC; white-space:nowrap; }
   .cp-sum{ display:flex; justify-content:space-between; gap:10px; padding-top:8px; margin-top:4px;
     border-top:1px solid rgba(240,206,154,.3); font-size:14px; color:#F6D9AC; font-weight:500; }
-  .chat-input{ display:flex; flex-wrap:nowrap; gap:8px; align-items:center; margin-top:12px; }
-  .chat-input input[type="text"]{ flex:1; min-width:0; font-family:inherit; font-size:15px; color:#F5EDE4;
-    background:rgba(255,247,240,.06); border:1px solid rgba(240,206,154,.32); border-radius:999px; padding:12px 16px; }
-  .chat-input input::placeholder{ color:rgba(245,237,228,.4); }
+  .chat-input{ margin-top:12px; }
+  .chat-input textarea{ width:100%; min-height:86px; max-height:220px; resize:vertical; overflow-y:auto;
+    font-family:inherit; font-size:15px; line-height:1.5; color:#F5EDE4;
+    background:rgba(255,247,240,.06); border:1px solid rgba(240,206,154,.32); border-radius:16px; padding:14px 16px; }
+  .chat-input textarea::placeholder{ color:rgba(245,237,228,.4); }
+  .chat-input textarea:focus{ outline:none; border-color:#E5B074; box-shadow:0 0 0 3px rgba(231,189,134,.18); }
+  .chat-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
+  .cp-tag{ display:inline-block; font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:600;
+    border-radius:999px; padding:2px 7px; margin-right:7px; }
+  .cp-tag--new{ background:rgba(246,217,172,.22); color:#F6D9AC; }
+  .cp-tag--edit{ background:rgba(140,200,255,.18); color:#9CCBFF; }
+  .cp-tag--del{ background:rgba(255,150,130,.18); color:#FFB4A2; }
   .chat-manual{ margin-top:16px; border-top:1px solid rgba(240,206,154,.18); padding-top:12px; }
   .chat-manual > summary{ cursor:pointer; list-style:none; font-size:12.5px; letter-spacing:.06em;
     color:rgba(245,237,228,.6); padding:4px 0; }
@@ -781,11 +788,13 @@ button{ font-family:var(--font-body); cursor:pointer; }
       </div>
 
       <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="z.B. 80 g Haferflocken mit Milch &hellip;">
-        <label class="btn btn--outline btn--small tr-photo" title="Foto">&#128247;
-          <input type="file" id="trPhoto" accept="image/*" hidden>
-        </label>
-        <button type="button" class="btn btn--gold btn--small" id="chatSend">Senden</button>
+        <textarea id="chatInput" rows="3" placeholder="Erz&auml;hl, was du gegessen hast &mdash; oder bitte um eine Korrektur, z.B. &bdquo;zieh 50 kcal vom Sandwich ab&ldquo;"></textarea>
+        <div class="chat-actions">
+          <label class="btn btn--outline btn--small tr-photo">&#128247; Foto
+            <input type="file" id="trPhoto" accept="image/*" hidden>
+          </label>
+          <button type="button" class="btn btn--gold btn--small" id="chatSend">Senden</button>
+        </div>
       </div>
 
       <p class="modal-note" id="trNote"></p>
@@ -1022,8 +1031,8 @@ button{ font-family:var(--font-body); cursor:pointer; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="config.js?v=36"></script>
-<script src="script.js?v=36"></script>
+<script src="config.js?v=37"></script>
+<script src="script.js?v=37"></script>
 <script src="linkify.js?v=1"></script>
 </body>
 </html>
