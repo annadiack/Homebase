@@ -399,6 +399,36 @@ button{ font-family:var(--font-body); cursor:pointer; }
   .tr-bar--f i{ background:linear-gradient(90deg,#C9A7F0,#8E6FD0); }
   .tr-bar--p i{ background:linear-gradient(90deg,#F6C98A,#E09B4A); }
   .tr-mealrow{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+  .tr-mealrow select{ font-family:inherit; font-size:14px; color:#F5EDE4; background:#241a12;
+    border:1px solid rgba(240,206,154,.32); border-radius:999px; padding:10px 14px; }
+  .chat{ margin-top:14px; max-height:46vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px;
+    padding:14px; border-radius:14px; background:rgba(255,247,240,.04); border:1px solid rgba(240,206,154,.18); }
+  .chat:empty{ display:none; }
+  .bub{ max-width:86%; padding:10px 13px; border-radius:14px; font-size:14px; line-height:1.5; white-space:pre-wrap; }
+  .bub--me{ align-self:flex-end; background:linear-gradient(135deg,#F6D9AC,#E5B074); color:#211509; border-bottom-right-radius:4px; }
+  .bub--ai{ align-self:flex-start; background:rgba(255,247,240,.07); border:1px solid rgba(240,206,154,.22);
+    color:#F5EDE4; border-bottom-left-radius:4px; }
+  .bub--wait{ opacity:.6; font-style:italic; }
+  .chat-pending{ margin-top:12px; padding:14px 16px; border-radius:14px;
+    background:rgba(255,247,240,.05); border:1px solid rgba(240,206,154,.45); box-shadow:0 0 20px rgba(231,189,134,.20); }
+  .chat-pending[hidden]{ display:none; }
+  .chat-pending__list{ display:flex; flex-direction:column; margin-bottom:12px; }
+  .cp-row{ display:flex; justify-content:space-between; gap:10px; padding:6px 0;
+    border-bottom:1px solid rgba(240,206,154,.12); font-size:13.5px; color:#F5EDE4; }
+  .cp-row:last-child{ border-bottom:none; }
+  .cp-row span:last-child{ color:#F6D9AC; white-space:nowrap; }
+  .cp-sum{ display:flex; justify-content:space-between; gap:10px; padding-top:8px; margin-top:4px;
+    border-top:1px solid rgba(240,206,154,.3); font-size:14px; color:#F6D9AC; font-weight:500; }
+  .chat-input{ display:flex; flex-wrap:nowrap; gap:8px; align-items:center; margin-top:12px; }
+  .chat-input input[type="text"]{ flex:1; min-width:0; font-family:inherit; font-size:15px; color:#F5EDE4;
+    background:rgba(255,247,240,.06); border:1px solid rgba(240,206,154,.32); border-radius:999px; padding:12px 16px; }
+  .chat-input input::placeholder{ color:rgba(245,237,228,.4); }
+  .chat-manual{ margin-top:16px; border-top:1px solid rgba(240,206,154,.18); padding-top:12px; }
+  .chat-manual > summary{ cursor:pointer; list-style:none; font-size:12.5px; letter-spacing:.06em;
+    color:rgba(245,237,228,.6); padding:4px 0; }
+  .chat-manual > summary::-webkit-details-marker{ display:none; }
+  .chat-manual > summary::before{ content:"+ "; color:#F6D9AC; }
+  .chat-manual[open] > summary::before{ content:"– "; }
   .tr-modes{ display:inline-flex; border:1px solid rgba(240,206,154,.32); border-radius:999px; overflow:hidden; }
   .tr-modes button{ border:none; background:transparent; color:rgba(245,237,228,.66);
     padding:9px 15px; font-size:12px; letter-spacing:.05em; }
@@ -732,7 +762,7 @@ button{ font-family:var(--font-body); cursor:pointer; }
     </div>
 
     <div class="widget reveal">
-      <h3 class="recipes-title">Eintragen</h3>
+      <h3 class="recipes-title">Chat</h3>
       <div class="tr-mealrow">
         <select id="trMeal" aria-label="Mahlzeit">
           <option value="breakfast">Fr&uuml;hst&uuml;ck</option>
@@ -740,38 +770,46 @@ button{ font-family:var(--font-body); cursor:pointer; }
           <option value="dinner">Abendessen</option>
           <option value="snack" selected>Snack</option>
         </select>
-        <div class="tr-modes">
-          <button type="button" data-tr-mode="auto" class="is-active">Sch&auml;tzen lassen</button>
-          <button type="button" data-tr-mode="manual">Selbst eintragen</button>
-        </div>
+        <button type="button" class="btn btn--outline btn--small" id="chatClear">Verlauf leeren</button>
       </div>
 
-      <div class="tr-add" id="trAuto">
-        <input type="text" id="trInput" placeholder="z.B. 2 Scheiben Brot mit K&auml;se">
-        <button type="button" class="btn btn--gold btn--small" id="trAddBtn">+ Hinzuf&uuml;gen</button>
-        <label class="btn btn--outline btn--small tr-photo">&#128247; Foto
+      <div class="chat" id="chatBox"></div>
+
+      <div class="chat-pending" id="chatPending" hidden>
+        <div class="chat-pending__list" id="chatPendingList"></div>
+        <button type="button" class="btn btn--gold btn--small" id="chatTake">&#10003; Makros &uuml;bernehmen</button>
+      </div>
+
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="z.B. 80 g Haferflocken mit Milch &hellip;">
+        <label class="btn btn--outline btn--small tr-photo" title="Foto">&#128247;
           <input type="file" id="trPhoto" accept="image/*" hidden>
         </label>
-      </div>
-
-      <div class="tr-manual" id="trManual" hidden>
-        <input type="text" id="mName" placeholder="Name, z.B. Proteink&auml;se">
-        <div class="tr-manual__grid">
-          <label>Menge (g)<input type="number" id="mGrams" min="0" step="1" inputmode="numeric" placeholder="z.B. 40"></label>
-          <label>kcal<input type="number" id="mKcal" min="0" inputmode="numeric" placeholder="0"></label>
-          <label>Kohlenhydrate (g)<input type="number" id="mCarbs" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
-          <label>Fett (g)<input type="number" id="mFat" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
-          <label>Protein (g)<input type="number" id="mProtein" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
-        </div>
-        <div class="tr-checks">
-          <label class="tr-check"><input type="checkbox" id="mPer100"> Werte gelten je 100 g</label>
-          <label class="tr-check"><input type="checkbox" id="mSaveFood"> Als eigenes Lebensmittel merken</label>
-        </div>
-        <button type="button" class="btn btn--gold btn--small" id="mAddBtn">+ Hinzuf&uuml;gen</button>
+        <button type="button" class="btn btn--gold btn--small" id="chatSend">Senden</button>
       </div>
 
       <p class="modal-note" id="trNote"></p>
-      <p class="tr-hint">&bdquo;Sch&auml;tzen lassen&ldquo;: Text oder Foto (Teller, N&auml;hrwerttabelle, Strichcode) &mdash; Produkte werden in Open Food Facts nachgeschlagen. &bdquo;Selbst eintragen&ldquo;: du gibst die Werte direkt ein, nichts wird gesch&auml;tzt.</p>
+
+      <details class="chat-manual">
+        <summary>Selbst eintragen &mdash; wenn du die Werte schon kennst</summary>
+        <div class="tr-manual" id="trManual">
+          <input type="text" id="mName" placeholder="Name, z.B. Proteink&auml;se">
+          <div class="tr-manual__grid">
+            <label>Menge (g)<input type="number" id="mGrams" min="0" step="1" inputmode="numeric" placeholder="z.B. 40"></label>
+            <label>kcal<input type="number" id="mKcal" min="0" inputmode="numeric" placeholder="0"></label>
+            <label>Kohlenhydrate (g)<input type="number" id="mCarbs" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+            <label>Fett (g)<input type="number" id="mFat" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+            <label>Protein (g)<input type="number" id="mProtein" min="0" step="0.1" inputmode="decimal" placeholder="0"></label>
+          </div>
+          <div class="tr-checks">
+            <label class="tr-check"><input type="checkbox" id="mPer100"> Werte gelten je 100 g</label>
+            <label class="tr-check"><input type="checkbox" id="mSaveFood"> Als eigenes Lebensmittel merken</label>
+          </div>
+          <button type="button" class="btn btn--gold btn--small" id="mAddBtn">+ Hinzuf&uuml;gen</button>
+        </div>
+      </details>
+
+      <p class="tr-hint">Erz&auml;hl einfach, was du gegessen hast &mdash; oder frag etwas (&bdquo;wie viel Protein fehlt mir noch?&ldquo;, &bdquo;rechne 3 Eier aus&ldquo;). Deine eigenen Lebensmittel werden dabei bevorzugt. Erkannte Werte landen erst nach &bdquo;Makros &uuml;bernehmen&ldquo; in der Leiste oben.</p>
     </div>
 
     <div class="widget reveal">
@@ -984,8 +1022,8 @@ button{ font-family:var(--font-body); cursor:pointer; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="config.js?v=35"></script>
-<script src="script.js?v=35"></script>
+<script src="config.js?v=36"></script>
+<script src="script.js?v=36"></script>
 <script src="linkify.js?v=1"></script>
 </body>
 </html>
