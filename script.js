@@ -1941,10 +1941,7 @@ function renderFoods() {
   box.querySelectorAll("[data-del-food-item]").forEach(b => b.addEventListener("click", () => mutDeleteFoodItem(b.dataset.delFoodItem)));
   box.querySelectorAll("[data-use-food]").forEach(b => b.addEventListener("click", () => {
     const f = state.foods.find(x => String(x.id) === b.dataset.useFood); if (!f) return;
-    document.querySelectorAll("[data-tr-mode]").forEach(x => x.classList.toggle("is-active", x.dataset.trMode === "manual"));
-    const auto = document.getElementById("trAuto"), man = document.getElementById("trManual");
-    if (auto) auto.hidden = true;
-    if (man) man.hidden = false;
+    const det = document.querySelector(".chat-manual"); if (det) det.open = true;
     document.getElementById("mName").value = f.name;
     document.getElementById("mKcal").value = r1(+f.kcal100);
     document.getElementById("mCarbs").value = r1(+f.carbs100);
@@ -2019,67 +2016,116 @@ function renderTracker() {
 }
 
 /* ---- Eingabe ---- */
-(function initTracker() {
-  const addBtn = document.getElementById("trAddBtn");
-  if (!addBtn) return;
-  const input = document.getElementById("trInput");
+/* ---- Chat ---- */
+const CHAT_KEY = "homebase_chat_v1";
+let chatMsgs = [];
+let chatPending = [];
+try { chatMsgs = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]"); } catch (e) { chatMsgs = []; }
+
+function chatSave() { try { localStorage.setItem(CHAT_KEY, JSON.stringify(chatMsgs.slice(-40))); } catch (e) {} }
+function renderChat(waiting) {
+  const box = document.getElementById("chatBox");
+  if (!box) return;
+  box.innerHTML = chatMsgs.map(m =>
+    `<div class="bub bub--${m.role === "user" ? "me" : "ai"}">${esc(m.content)}</div>`
+  ).join("") + (waiting ? `<div class="bub bub--ai bub--wait">denkt nach…</div>` : "");
+  box.scrollTop = box.scrollHeight;
+}
+function renderPending() {
+  const box = document.getElementById("chatPending");
+  const list = document.getElementById("chatPendingList");
+  if (!box || !list) return;
+  if (!chatPending.length) { box.hidden = true; list.innerHTML = ""; return; }
+  const sum = chatPending.reduce((s, i) => ({
+    kcal: s.kcal + (+i.kcal || 0), carbs: s.carbs + (+i.carbs || 0),
+    fat: s.fat + (+i.fat || 0), protein: s.protein + (+i.protein || 0)
+  }), { kcal: 0, carbs: 0, fat: 0, protein: 0 });
+  list.innerHTML = chatPending.map(i =>
+    `<div class="cp-row"><span>${esc(i.name)}</span><span>${Math.round(+i.kcal || 0)} kcal</span></div>`
+  ).join("") +
+    `<div class="cp-sum"><span>Gesamt</span><span>${Math.round(sum.kcal)} kcal · K ${r1(sum.carbs)} · F ${r1(sum.fat)} · P ${r1(sum.protein)}</span></div>`;
+  box.hidden = false;
+}
+async function chatSend(text) {
   const note = document.getElementById("trNote");
+  if (!FUNCTIONS_BASE) { if (note) note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+  chatMsgs.push({ role: "user", content: text });
+  chatSave(); renderChat(true);
+  try {
+    const res = await fetch(`${FUNCTIONS_BASE}/nutrition-chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({
+        messages: chatMsgs, myFoods: myFoodsPayload(),
+        goals: goalValues(), totals: foodTotals(trackerISO())
+      }),
+    });
+    if (!res.ok) throw new Error("nutrition-chat " + res.status);
+    const r = await res.json();
+    chatMsgs.push({ role: "assistant", content: r.reply || "…" });
+    chatSave(); renderChat(false);
+    if (Array.isArray(r.items) && r.items.length) { chatPending = r.items; renderPending(); }
+  } catch (e) {
+    chatMsgs.push({ role: "assistant", content: "Das hat gerade nicht geklappt — bitte nochmal versuchen." });
+    chatSave(); renderChat(false);
+    console.warn(e);
+  }
+}
 
-  const addByText = async () => {
-    const v = input.value.trim(); if (!v) return;
-    if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
-    note.textContent = "Wird berechnet…"; input.value = "";
-    try {
-      const res = await callAnalyzeFood({ text: v });
-      const items = res.items || [];
-      if (!items.length) { note.textContent = "Konnte nicht erkannt werden — bitte genauer beschreiben."; return; }
-      for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: "text" });
-      note.textContent = items.length + " Eintrag" + (items.length > 1 ? "e" : "") + " hinzugefügt.";
-    } catch (e) { note.textContent = "Hat nicht geklappt — bitte nochmal."; console.warn(e); }
-  };
-  addBtn.addEventListener("click", addByText);
-  input.addEventListener("keydown", e => { if (e.key === "Enter") addByText(); });
+(function initTracker() {
+  const send = document.getElementById("chatSend");
+  const input = document.getElementById("chatInput");
+  const note = document.getElementById("trNote");
+  if (!send || !input) return;
 
+  renderChat(false);
+  renderPending();
+
+  const fire = () => { const v = input.value.trim(); if (!v) return; input.value = ""; chatSend(v); };
+  send.addEventListener("click", fire);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") fire(); });
+
+  const clear = document.getElementById("chatClear");
+  if (clear) clear.addEventListener("click", () => {
+    chatMsgs = []; chatPending = []; chatSave(); renderChat(false); renderPending();
+    if (note) note.textContent = "Verlauf geleert.";
+  });
+
+  const take = document.getElementById("chatTake");
+  if (take) take.addEventListener("click", async () => {
+    if (!chatPending.length) return;
+    const items = chatPending.slice();
+    chatPending = []; renderPending();
+    for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: "chat" });
+    const kcal = items.reduce((s, i) => s + (+i.kcal || 0), 0);
+    if (note) note.textContent = Math.round(kcal) + " kcal in den Tag übernommen.";
+  });
+
+  /* Foto: Teller, Etikett oder Strichcode -> wandert in den Chat als Vorschlag */
   const photo = document.getElementById("trPhoto");
   if (photo) photo.addEventListener("change", async e => {
     const file = e.target.files[0]; if (!file) return;
-    if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
-    note.textContent = "Foto wird ausgewertet…";
+    if (!FUNCTIONS_BASE) { if (note) note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+    chatMsgs.push({ role: "user", content: "[Foto gesendet]" });
+    chatSave(); renderChat(true);
     try {
       const base64 = await fileToBase64(file);
       const res = await callAnalyzeFood({ image: base64, mimeType: file.type || "image/jpeg" });
       const items = res.items || [];
-      if (!items.length) { note.textContent = res.note || "Nichts erkannt — bitte näher und schärfer fotografieren."; return; }
-      for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: res.source || "photo" });
-      note.textContent = (res.note ? res.note + " " : "") + "Hinzugefügt — Werte kannst du per × entfernen und neu erfassen.";
-    } catch (err) { note.textContent = "Foto-Auswertung fehlgeschlagen."; console.warn(err); }
-    finally { photo.value = ""; }
+      if (!items.length) {
+        chatMsgs.push({ role: "assistant", content: res.note || "Auf dem Foto konnte ich nichts erkennen — bitte näher und schärfer fotografieren." });
+      } else {
+        const kcal = items.reduce((s, i) => s + (+i.kcal || 0), 0);
+        chatMsgs.push({ role: "assistant", content: "Erkannt: " + items.map(i => i.name).join(", ") + " — zusammen rund " + Math.round(kcal) + " kcal." + (res.note ? " " + res.note : "") });
+        chatPending = items;
+      }
+      chatSave(); renderChat(false); renderPending();
+    } catch (err) {
+      chatMsgs.push({ role: "assistant", content: "Die Foto-Auswertung hat nicht geklappt." });
+      chatSave(); renderChat(false);
+      console.warn(err);
+    } finally { photo.value = ""; }
   });
-
-  const gb = document.getElementById("saveGoalsBtn");
-  if (gb) gb.addEventListener("click", () => {
-    mutSaveGoals({
-      kcal: +document.getElementById("goalKcal").value || 2000,
-      carbs: +document.getElementById("goalCarbs").value || 250,
-      fat: +document.getElementById("goalFat").value || 70,
-      protein: +document.getElementById("goalProtein").value || 100,
-    });
-    const n = document.getElementById("goalsNote"); if (n) n.textContent = "Ziele gespeichert.";
-  });
-
-  const td = document.getElementById("trToday");
-  if (td) td.addEventListener("click", () => { trackerDate = todayISO(); renderTracker(); });
-
-  /* Umschalter: schaetzen lassen <-> selbst eintragen */
-  const auto = document.getElementById("trAuto");
-  const manual = document.getElementById("trManual");
-  document.querySelectorAll("[data-tr-mode]").forEach(b => b.addEventListener("click", () => {
-    const m = b.dataset.trMode;
-    document.querySelectorAll("[data-tr-mode]").forEach(x => x.classList.toggle("is-active", x === b));
-    if (auto) auto.hidden = m !== "auto";
-    if (manual) manual.hidden = m !== "manual";
-    if (note) note.textContent = "";
-  }));
 
   /* Eigeneingabe: Gramm + "je 100 g" + optional als Lebensmittel merken */
   const mAdd = document.getElementById("mAddBtn");
@@ -2091,28 +2137,22 @@ function renderTracker() {
       if (!name) { note.textContent = "Bitte einen Namen eingeben."; return; }
       const grams = num("mGrams");
       const per100 = !!(document.getElementById("mPer100") || {}).checked;
-      let kcal = num("mKcal"), carbs = num("mCarbs"), fat = num("mFat"), protein = num("mProtein");
+      const kcal = num("mKcal"), carbs = num("mCarbs"), fat = num("mFat"), protein = num("mProtein");
       if (!kcal && !carbs && !fat && !protein) { note.textContent = "Bitte mindestens kcal oder einen Makro-Wert eingeben."; return; }
-
-      // Werte je 100 g auf die gegessene Menge umrechnen
       const factor = per100 ? (grams > 0 ? grams / 100 : 1) : 1;
-      const eaten = { kcal: kcal * factor, carbs: carbs * factor, fat: fat * factor, protein: protein * factor };
-
       const label = grams > 0 ? name + " (" + r1(grams) + " g)" : name;
-      await mutAddFood({ name: label, ...eaten, grams: grams || null, meal: currentMeal(), source: "manual" });
+      await mutAddFood({ name: label, kcal: kcal * factor, carbs: carbs * factor, fat: fat * factor, protein: protein * factor,
+        grams: grams || null, meal: currentMeal(), source: "manual" });
 
-      // Optional als eigenes Lebensmittel speichern (immer je 100 g)
       const saveEl = document.getElementById("mSaveFood");
       if (saveEl && saveEl.checked) {
         let p100 = null;
         if (per100) p100 = { kcal100: kcal, carbs100: carbs, fat100: fat, protein100: protein };
         else if (grams > 0) { const k = 100 / grams; p100 = { kcal100: kcal * k, carbs100: carbs * k, fat100: fat * k, protein100: protein * k }; }
         if (p100) { await mutAddFoodItem({ name, ...p100, source: "manual" }); note.textContent = "Eingetragen und als eigenes Lebensmittel gespeichert."; }
-        else { note.textContent = "Eingetragen. Zum Speichern als Lebensmittel bitte Gramm angeben oder \u201eje 100 g\u201c ankreuzen."; }
+        else { note.textContent = "Eingetragen. Zum Speichern als Lebensmittel bitte Gramm angeben oder je 100 g ankreuzen."; }
         saveEl.checked = false;
-      } else {
-        note.textContent = "Eingetragen.";
-      }
+      } else { note.textContent = "Eingetragen."; }
 
       nameEl.value = "";
       ["mGrams", "mKcal", "mCarbs", "mFat", "mProtein"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
@@ -2125,7 +2165,7 @@ function renderTracker() {
     });
   }
 
-  /* Nährwerttabelle abfotografieren -> als eigenes Lebensmittel speichern */
+  /* Nährwerttabelle abfotografieren -> eigenes Lebensmittel */
   const lbl = document.getElementById("foodLabelPhoto");
   if (lbl) lbl.addEventListener("change", async e => {
     const file = e.target.files[0]; if (!file) return;
@@ -2146,6 +2186,20 @@ function renderTracker() {
     } catch (err) { if (fnote) fnote.textContent = "Etikett konnte nicht gelesen werden."; console.warn(err); }
     finally { lbl.value = ""; }
   });
+
+  const gb = document.getElementById("saveGoalsBtn");
+  if (gb) gb.addEventListener("click", () => {
+    mutSaveGoals({
+      kcal: +document.getElementById("goalKcal").value || 2000,
+      carbs: +document.getElementById("goalCarbs").value || 250,
+      fat: +document.getElementById("goalFat").value || 70,
+      protein: +document.getElementById("goalProtein").value || 100,
+    });
+    const n = document.getElementById("goalsNote"); if (n) n.textContent = "Ziele gespeichert.";
+  });
+
+  const td = document.getElementById("trToday");
+  if (td) td.addEventListener("click", () => { trackerDate = todayISO(); renderTracker(); });
 })();
 
 /* ==========================================================================
