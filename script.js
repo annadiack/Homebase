@@ -1819,6 +1819,18 @@ async function mutAddFood(entry) {
   else { state.foodLog.push({ id: uid("f"), ...row }); localSave(); }
   renderAll();
 }
+async function mutUpdateFood(id, fields) {
+  const row = {};
+  if (fields.name) row.name = tidyName(fields.name);
+  if (fields.kcal != null) row.kcal = Math.round(+fields.kcal || 0);
+  if (fields.carbs != null) row.carbs = r1(+fields.carbs || 0);
+  if (fields.fat != null) row.fat = r1(+fields.fat || 0);
+  if (fields.protein != null) row.protein = r1(+fields.protein || 0);
+  if (!Object.keys(row).length) return;
+  if (REMOTE) { await sb.from("food_log").update(row).eq("id", id); await remoteFetchAll(); }
+  else { const f = state.foodLog.find(x => String(x.id) === String(id)); if (f) Object.assign(f, row); localSave(); }
+  renderAll();
+}
 async function mutDeleteFood(id) {
   if (REMOTE) { await sb.from("food_log").delete().eq("id", id); await remoteFetchAll(); }
   else { state.foodLog = state.foodLog.filter(f => String(f.id) !== String(id)); localSave(); }
@@ -2019,7 +2031,7 @@ function renderTracker() {
 /* ---- Chat ---- */
 const CHAT_KEY = "homebase_chat_v1";
 let chatMsgs = [];
-let chatPending = [];
+let chatPending = { items: [], updates: [], deletes: [] };
 try { chatMsgs = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]"); } catch (e) { chatMsgs = []; }
 
 function chatSave() { try { localStorage.setItem(CHAT_KEY, JSON.stringify(chatMsgs.slice(-40))); } catch (e) {} }
@@ -2031,19 +2043,38 @@ function renderChat(waiting) {
   ).join("") + (waiting ? `<div class="bub bub--ai bub--wait">denkt nach…</div>` : "");
   box.scrollTop = box.scrollHeight;
 }
+function pendingCount() {
+  return chatPending.items.length + chatPending.updates.length + chatPending.deletes.length;
+}
 function renderPending() {
   const box = document.getElementById("chatPending");
   const list = document.getElementById("chatPendingList");
   if (!box || !list) return;
-  if (!chatPending.length) { box.hidden = true; list.innerHTML = ""; return; }
-  const sum = chatPending.reduce((s, i) => ({
-    kcal: s.kcal + (+i.kcal || 0), carbs: s.carbs + (+i.carbs || 0),
-    fat: s.fat + (+i.fat || 0), protein: s.protein + (+i.protein || 0)
-  }), { kcal: 0, carbs: 0, fat: 0, protein: 0 });
-  list.innerHTML = chatPending.map(i =>
-    `<div class="cp-row"><span>${esc(i.name)}</span><span>${Math.round(+i.kcal || 0)} kcal</span></div>`
-  ).join("") +
-    `<div class="cp-sum"><span>Gesamt</span><span>${Math.round(sum.kcal)} kcal · K ${r1(sum.carbs)} · F ${r1(sum.fat)} · P ${r1(sum.protein)}</span></div>`;
+  if (!pendingCount()) { box.hidden = true; list.innerHTML = ""; return; }
+
+  const byId = id => (state.foodLog || []).find(f => String(f.id) === String(id));
+  let d = { kcal: 0, carbs: 0, fat: 0, protein: 0 };
+  const rows = [];
+
+  chatPending.items.forEach(i => {
+    rows.push(`<div class="cp-row"><span><b class="cp-tag cp-tag--new">neu</b> ${esc(i.name)}</span><span>+${Math.round(+i.kcal || 0)} kcal</span></div>`);
+    d.kcal += +i.kcal || 0; d.carbs += +i.carbs || 0; d.fat += +i.fat || 0; d.protein += +i.protein || 0;
+  });
+  chatPending.updates.forEach(u => {
+    const old = byId(u.id);
+    const diff = (+u.kcal || 0) - (old ? +old.kcal || 0 : 0);
+    rows.push(`<div class="cp-row"><span><b class="cp-tag cp-tag--edit">ändern</b> ${esc(u.name || (old && old.name) || "Eintrag")}</span><span>${diff >= 0 ? "+" : ""}${Math.round(diff)} kcal → ${Math.round(+u.kcal || 0)}</span></div>`);
+    if (old) { d.kcal += diff; d.carbs += (+u.carbs || 0) - (+old.carbs || 0); d.fat += (+u.fat || 0) - (+old.fat || 0); d.protein += (+u.protein || 0) - (+old.protein || 0); }
+  });
+  chatPending.deletes.forEach(id => {
+    const old = byId(id);
+    rows.push(`<div class="cp-row"><span><b class="cp-tag cp-tag--del">entfernen</b> ${esc(old ? old.name : "Eintrag")}</span><span>−${Math.round(old ? +old.kcal || 0 : 0)} kcal</span></div>`);
+    if (old) { d.kcal -= +old.kcal || 0; d.carbs -= +old.carbs || 0; d.fat -= +old.fat || 0; d.protein -= +old.protein || 0; }
+  });
+
+  const sgn = n => (n >= 0 ? "+" : "−") + Math.abs(r1(n));
+  list.innerHTML = rows.join("") +
+    `<div class="cp-sum"><span>Wirkung auf den Tag</span><span>${sgn(d.kcal)} kcal · K ${sgn(d.carbs)} · F ${sgn(d.fat)} · P ${sgn(d.protein)}</span></div>`;
   box.hidden = false;
 }
 async function chatSend(text) {
@@ -2057,14 +2088,23 @@ async function chatSend(text) {
       headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
       body: JSON.stringify({
         messages: chatMsgs, myFoods: myFoodsPayload(),
-        goals: goalValues(), totals: foodTotals(trackerISO())
+        goals: goalValues(), totals: foodTotals(trackerISO()),
+        log: foodOn(trackerISO()).map(f => ({
+          id: f.id, meal: f.meal, name: f.name,
+          kcal: +f.kcal || 0, carbs: +f.carbs || 0, fat: +f.fat || 0, protein: +f.protein || 0
+        }))
       }),
     });
     if (!res.ok) throw new Error("nutrition-chat " + res.status);
     const r = await res.json();
     chatMsgs.push({ role: "assistant", content: r.reply || "…" });
     chatSave(); renderChat(false);
-    if (Array.isArray(r.items) && r.items.length) { chatPending = r.items; renderPending(); }
+    chatPending = {
+      items: Array.isArray(r.items) ? r.items : [],
+      updates: Array.isArray(r.updates) ? r.updates : [],
+      deletes: Array.isArray(r.deletes) ? r.deletes : []
+    };
+    renderPending();
   } catch (e) {
     chatMsgs.push({ role: "assistant", content: "Das hat gerade nicht geklappt — bitte nochmal versuchen." });
     chatSave(); renderChat(false);
@@ -2081,24 +2121,32 @@ async function chatSend(text) {
   renderChat(false);
   renderPending();
 
-  const fire = () => { const v = input.value.trim(); if (!v) return; input.value = ""; chatSend(v); };
+  const fire = () => { const v = input.value.trim(); if (!v) return; input.value = ""; input.style.height = "auto"; chatSend(v); };
   send.addEventListener("click", fire);
-  input.addEventListener("keydown", e => { if (e.key === "Enter") fire(); });
+  input.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); fire(); } });
+  const grow = () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 220) + "px"; };
+  input.addEventListener("input", grow); grow();
 
   const clear = document.getElementById("chatClear");
   if (clear) clear.addEventListener("click", () => {
-    chatMsgs = []; chatPending = []; chatSave(); renderChat(false); renderPending();
+    chatMsgs = []; chatPending = { items: [], updates: [], deletes: [] }; chatSave(); renderChat(false); renderPending();
     if (note) note.textContent = "Verlauf geleert.";
   });
 
   const take = document.getElementById("chatTake");
   if (take) take.addEventListener("click", async () => {
-    if (!chatPending.length) return;
-    const items = chatPending.slice();
-    chatPending = []; renderPending();
-    for (const it of items) await mutAddFood({ ...it, meal: currentMeal(), source: "chat" });
-    const kcal = items.reduce((s, i) => s + (+i.kcal || 0), 0);
-    if (note) note.textContent = Math.round(kcal) + " kcal in den Tag übernommen.";
+    if (!pendingCount()) return;
+    const p = chatPending;
+    chatPending = { items: [], updates: [], deletes: [] };
+    renderPending();
+    for (const id of p.deletes) await mutDeleteFood(id);
+    for (const u of p.updates) await mutUpdateFood(u.id, u);
+    for (const it of p.items) await mutAddFood({ ...it, meal: currentMeal(), source: "chat" });
+    const parts = [];
+    if (p.items.length) parts.push(p.items.length + " hinzugefügt");
+    if (p.updates.length) parts.push(p.updates.length + " geändert");
+    if (p.deletes.length) parts.push(p.deletes.length + " entfernt");
+    if (note) note.textContent = parts.join(", ") + " — Tagesbalken aktualisiert.";
   });
 
   /* Foto: Teller, Etikett oder Strichcode -> wandert in den Chat als Vorschlag */
@@ -2117,7 +2165,7 @@ async function chatSend(text) {
       } else {
         const kcal = items.reduce((s, i) => s + (+i.kcal || 0), 0);
         chatMsgs.push({ role: "assistant", content: "Erkannt: " + items.map(i => i.name).join(", ") + " — zusammen rund " + Math.round(kcal) + " kcal." + (res.note ? " " + res.note : "") });
-        chatPending = items;
+        chatPending = { items: items, updates: [], deletes: [] };
       }
       chatSave(); renderChat(false); renderPending();
     } catch (err) {
