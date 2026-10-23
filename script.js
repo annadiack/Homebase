@@ -1157,6 +1157,16 @@ function normalizeYouTube(url) {
   else if ((m = url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/))) id = m[1];
   return id ? `https://www.youtube.com/watch?v=${id}` : url;
 }
+async function fetchLinkMeta(url) {
+  if (!FUNCTIONS_BASE) throw new Error("keine Verbindung");
+  const res = await fetch(`${FUNCTIONS_BASE}/fetch-link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) throw new Error("fetch-link " + res.status);
+  return res.json();
+}
 async function fetchOEmbed(url, platform) {
   let endpoint;
   if (platform === "youtube") endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(normalizeYouTube(url))}&format=json`;
@@ -1185,37 +1195,73 @@ importModal.addEventListener("click", e => { if (e.target === importModal) close
 document.getElementById("loadPreview").addEventListener("click", async () => {
   const url = document.getElementById("importUrl").value.trim();
   const note = document.getElementById("platformNote"), preview = document.getElementById("importPreview");
+  const thumb = document.getElementById("previewThumb");
+  const capEl = document.getElementById("importCaption");
   if (!url) { note.textContent = "Bitte zuerst einen Link einfügen."; return; }
-  const platform = detectPlatform(url);
-  const manualMode = (msg) => {
-    note.textContent = msg;
-    document.getElementById("previewThumb").hidden = true;
-    document.getElementById("previewTitle").value = document.getElementById("previewTitle").value || "";
+
+  const showCard = (platform, title, thumbUrl) => {
+    document.getElementById("previewTitle").value = title || document.getElementById("previewTitle").value || "";
     document.getElementById("previewPlatform").textContent = platformLabel(platform);
+    if (thumbUrl) { thumb.src = thumbUrl; thumb.hidden = false; } else { thumb.hidden = true; }
     preview.hidden = false;
-    currentImport = { platform, url, thumbnail: "" };
-    const t = document.getElementById("previewTitle");
-    if (t) { t.focus(); }
+    currentImport = { platform, url, thumbnail: thumbUrl || "" };
   };
-  if (platform === "instagram" || platform === "sonstige") {
-    manualMode(platform === "instagram"
-      ? "Instagram erlaubt keine Vorschau — bitte Titel unten selbst eintragen."
-      : "Unbekannte Plattform — bitte Titel unten selbst eintragen.");
-    return;
-  }
+
   note.textContent = "Lade Vorschau…";
+  let platform = detectPlatform(url);
+
+  // 1) Über den Server — umgeht die Browser-Sperre und liefert auch die Beschreibung
   try {
-    const data = await fetchOEmbed(url, platform);
-    const thumb = document.getElementById("previewThumb");
-    if (data.thumbnail_url) { thumb.src = data.thumbnail_url; thumb.hidden = false; } else { thumb.hidden = true; }
-    document.getElementById("previewTitle").value = data.title || "";
-    document.getElementById("previewPlatform").textContent = platformLabel(platform);
-    preview.hidden = false; note.textContent = "Vorschau geladen.";
-    currentImport = { platform, url, thumbnail: data.thumbnail_url || "" };
-  } catch (err) {
-    manualMode("TikTok/YouTube hat die Vorschau abgelehnt — Titel bitte unten eintragen. Für die Zutaten die Videobeschreibung ins Feld darunter kopieren.");
-    console.warn(err);
+    const meta = await fetchLinkMeta(url);
+    if (meta && meta.ok) {
+      platform = meta.platform || platform;
+      showCard(platform, meta.title, meta.thumbnail);
+      if (capEl && meta.description && !capEl.value.trim()) capEl.value = meta.description;
+
+      const ingBox = document.getElementById("importIngredients");
+      if (meta.description && ingBox && !ingBox.value.trim()) {
+        note.textContent = "Vorschau geladen — lese Zutaten…";
+        try {
+          const result = await callExtractIngredients([meta.title, meta.description].filter(Boolean).join("\n"));
+          const items = result.items || [];
+          if (items.length) {
+            ingBox.value = items.map(i => i.text).join("\n");
+            lastEstimatedCalories = items;
+            document.getElementById("ingredientCalories").innerHTML = items.map(it =>
+              `<div class="ingredient-calories__row"><span>${esc(it.text)}</span><span>${it.calories ?? "–"} kcal</span></div>`).join("");
+            const totalEl = document.getElementById("recipeTotalCalories");
+            totalEl.textContent = `Gesamt: ${result.total ?? 0} kcal`; totalEl.hidden = false;
+            note.textContent = "Vorschau und " + items.length + " Zutaten geladen.";
+          } else {
+            note.textContent = "Vorschau geladen — in der Beschreibung standen keine Zutaten.";
+          }
+        } catch (e) {
+          note.textContent = "Vorschau geladen — Zutaten bitte über den Knopf unten erkennen lassen.";
+          console.warn(e);
+        }
+      } else {
+        note.textContent = "Vorschau geladen.";
+      }
+      return;
+    }
+  } catch (e) { console.warn("fetch-link nicht verfügbar:", e); }
+
+  // 2) Direkt im Browser (klappt bei YouTube meist, bei TikTok selten)
+  if (platform === "tiktok" || platform === "youtube") {
+    try {
+      const data = await fetchOEmbed(url, platform);
+      showCard(platform, data.title || "", data.thumbnail_url || "");
+      note.textContent = "Vorschau geladen.";
+      return;
+    } catch (e) { console.warn(e); }
   }
+
+  // 3) Manuell — Karte bleibt sichtbar, damit der Titel eingetippt werden kann
+  showCard(platform, "", "");
+  note.textContent = platform === "instagram"
+    ? "Instagram gibt nichts heraus — Titel bitte selbst eintragen."
+    : "Konnte nicht automatisch gelesen werden — Titel bitte selbst eintragen.";
+  const t = document.getElementById("previewTitle"); if (t) t.focus();
 });
 
 let lastEstimatedCalories = null;
