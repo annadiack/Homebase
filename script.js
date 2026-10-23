@@ -1157,6 +1157,82 @@ function normalizeYouTube(url) {
   else if ((m = url.match(/youtube\.com\/embed\/([A-Za-z0-9_-]{6,})/))) id = m[1];
   return id ? `https://www.youtube.com/watch?v=${id}` : url;
 }
+/* Holt Titel + Beschreibung eines Links. Probiert mehrere Wege, bis einer klappt. */
+const CORS_PROXIES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+];
+function oembedUrlFor(url, platform) {
+  if (platform === "tiktok") return `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+  if (platform === "youtube") return `https://www.youtube.com/oembed?url=${encodeURIComponent(normalizeYouTube(url))}&format=json`;
+  return "";
+}
+function metaFromHTML(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const pick = sel => { const el = doc.querySelector(sel); return el ? (el.getAttribute("content") || "").trim() : ""; };
+    const title = pick('meta[property="og:title"]') || pick('meta[name="twitter:title"]') ||
+      (doc.querySelector("title") ? doc.querySelector("title").textContent.trim() : "");
+    const description = pick('meta[property="og:description"]') || pick('meta[name="twitter:description"]') || pick('meta[name="description"]');
+    const thumbnail = pick('meta[property="og:image"]') || pick('meta[name="twitter:image"]');
+    if (!title && !description) return null;
+    return { title, description, thumbnail };
+  } catch (e) { return null; }
+}
+async function resolveLink(url) {
+  const platform = detectPlatform(url);
+
+  // 1) Eigene Server-Funktion (falls angelegt) - sauberster Weg
+  try {
+    const m = await fetchLinkMeta(url);
+    if (m && m.ok && (m.title || m.description)) {
+      return { platform: m.platform || platform, title: m.title || "", description: m.description || "", thumbnail: m.thumbnail || "" };
+    }
+  } catch (e) { /* weiter */ }
+
+  const oe = oembedUrlFor(url, platform);
+
+  // 2) Direkt im Browser
+  if (oe) {
+    try {
+      const r = await fetch(oe);
+      if (r.ok) {
+        const j = await r.json();
+        if (j && (j.title || j.thumbnail_url)) {
+          return { platform, title: j.title || "", description: "", thumbnail: j.thumbnail_url || "" };
+        }
+      }
+    } catch (e) { /* weiter */ }
+  }
+
+  // 3) Über einen öffentlichen Umleitungsdienst (umgeht die Browser-Sperre)
+  if (oe) {
+    for (const prox of CORS_PROXIES) {
+      try {
+        const r = await fetch(prox(oe));
+        if (!r.ok) continue;
+        const txt = await r.text();
+        const j = JSON.parse(txt);
+        if (j && (j.title || j.thumbnail_url)) {
+          return { platform, title: j.title || "", description: "", thumbnail: j.thumbnail_url || "" };
+        }
+      } catch (e) { /* weiter */ }
+    }
+  }
+
+  // 4) Seite selbst holen und Beschreibung auslesen
+  for (const prox of CORS_PROXIES) {
+    try {
+      const r = await fetch(prox(url));
+      if (!r.ok) continue;
+      const html = await r.text();
+      const m = metaFromHTML(html);
+      if (m) return { platform, title: m.title || "", description: m.description || "", thumbnail: m.thumbnail || "" };
+    } catch (e) { /* weiter */ }
+  }
+
+  return null;
+}
 async function fetchLinkMeta(url) {
   if (!FUNCTIONS_BASE) throw new Error("keine Verbindung");
   const res = await fetch(`${FUNCTIONS_BASE}/fetch-link`, {
@@ -1192,76 +1268,38 @@ document.getElementById("openImportModal").addEventListener("click", () => { pop
 document.getElementById("closeImportModal").addEventListener("click", () => closeModal(importModal));
 importModal.addEventListener("click", e => { if (e.target === importModal) closeModal(importModal); });
 
+function showImportCard(platform, title, thumbUrl, url) {
+  const preview = document.getElementById("importPreview");
+  const thumb = document.getElementById("previewThumb");
+  const t = document.getElementById("previewTitle");
+  if (title) t.value = title;
+  document.getElementById("previewPlatform").textContent = platformLabel(platform);
+  if (thumbUrl) { thumb.src = thumbUrl; thumb.hidden = false; } else { thumb.hidden = true; }
+  preview.hidden = false;
+  currentImport = { platform, url, thumbnail: thumbUrl || "" };
+}
+async function loadLinkIntoForm(url, note) {
+  const meta = await resolveLink(url);
+  const platform = (meta && meta.platform) || detectPlatform(url);
+  if (!meta || (!meta.title && !meta.description)) {
+    showImportCard(platform, "", "", url);
+    if (note) note.textContent = "Konnte nicht automatisch gelesen werden — Titel bitte selbst eintragen.";
+    const t = document.getElementById("previewTitle"); if (t) t.focus();
+    return null;
+  }
+  showImportCard(platform, meta.title, meta.thumbnail, url);
+  const capEl = document.getElementById("importCaption");
+  if (capEl && meta.description && !capEl.value.trim()) capEl.value = meta.description;
+  return meta;
+}
+
 document.getElementById("loadPreview").addEventListener("click", async () => {
   const url = document.getElementById("importUrl").value.trim();
-  const note = document.getElementById("platformNote"), preview = document.getElementById("importPreview");
-  const thumb = document.getElementById("previewThumb");
-  const capEl = document.getElementById("importCaption");
+  const note = document.getElementById("platformNote");
   if (!url) { note.textContent = "Bitte zuerst einen Link einfügen."; return; }
-
-  const showCard = (platform, title, thumbUrl) => {
-    document.getElementById("previewTitle").value = title || document.getElementById("previewTitle").value || "";
-    document.getElementById("previewPlatform").textContent = platformLabel(platform);
-    if (thumbUrl) { thumb.src = thumbUrl; thumb.hidden = false; } else { thumb.hidden = true; }
-    preview.hidden = false;
-    currentImport = { platform, url, thumbnail: thumbUrl || "" };
-  };
-
   note.textContent = "Lade Vorschau…";
-  let platform = detectPlatform(url);
-
-  // 1) Über den Server — umgeht die Browser-Sperre und liefert auch die Beschreibung
-  try {
-    const meta = await fetchLinkMeta(url);
-    if (meta && meta.ok) {
-      platform = meta.platform || platform;
-      showCard(platform, meta.title, meta.thumbnail);
-      if (capEl && meta.description && !capEl.value.trim()) capEl.value = meta.description;
-
-      const ingBox = document.getElementById("importIngredients");
-      if (meta.description && ingBox && !ingBox.value.trim()) {
-        note.textContent = "Vorschau geladen — lese Zutaten…";
-        try {
-          const result = await callExtractIngredients([meta.title, meta.description].filter(Boolean).join("\n"));
-          const items = result.items || [];
-          if (items.length) {
-            ingBox.value = items.map(i => i.text).join("\n");
-            lastEstimatedCalories = items;
-            document.getElementById("ingredientCalories").innerHTML = items.map(it =>
-              `<div class="ingredient-calories__row"><span>${esc(it.text)}</span><span>${it.calories ?? "–"} kcal</span></div>`).join("");
-            const totalEl = document.getElementById("recipeTotalCalories");
-            totalEl.textContent = `Gesamt: ${result.total ?? 0} kcal`; totalEl.hidden = false;
-            note.textContent = "Vorschau und " + items.length + " Zutaten geladen.";
-          } else {
-            note.textContent = "Vorschau geladen — in der Beschreibung standen keine Zutaten.";
-          }
-        } catch (e) {
-          note.textContent = "Vorschau geladen — Zutaten bitte über den Knopf unten erkennen lassen.";
-          console.warn(e);
-        }
-      } else {
-        note.textContent = "Vorschau geladen.";
-      }
-      return;
-    }
-  } catch (e) { console.warn("fetch-link nicht verfügbar:", e); }
-
-  // 2) Direkt im Browser (klappt bei YouTube meist, bei TikTok selten)
-  if (platform === "tiktok" || platform === "youtube") {
-    try {
-      const data = await fetchOEmbed(url, platform);
-      showCard(platform, data.title || "", data.thumbnail_url || "");
-      note.textContent = "Vorschau geladen.";
-      return;
-    } catch (e) { console.warn(e); }
-  }
-
-  // 3) Manuell — Karte bleibt sichtbar, damit der Titel eingetippt werden kann
-  showCard(platform, "", "");
-  note.textContent = platform === "instagram"
-    ? "Instagram gibt nichts heraus — Titel bitte selbst eintragen."
-    : "Konnte nicht automatisch gelesen werden — Titel bitte selbst eintragen.";
-  const t = document.getElementById("previewTitle"); if (t) t.focus();
+  const meta = await loadLinkIntoForm(url, note);
+  if (meta) note.textContent = "Vorschau geladen.";
 });
 
 let lastEstimatedCalories = null;
@@ -1283,14 +1321,26 @@ document.getElementById("estimateCaloriesBtn").addEventListener("click", async (
 
 document.getElementById("autoExtractBtn").addEventListener("click", async () => {
   const note = document.getElementById("caloriesNote");
+  const pnote = document.getElementById("platformNote");
+  const url = document.getElementById("importUrl").value.trim();
   const capEl = document.getElementById("importCaption");
-  const caption = [
+  const titleEl = document.getElementById("previewTitle");
+  if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+
+  let caption = [
     capEl ? capEl.value.trim() : "",
-    document.getElementById("previewTitle").value.trim(),
+    titleEl ? titleEl.value.trim() : "",
     document.getElementById("importIngredients").value.trim()
   ].filter(Boolean).join("\n");
-  if (!caption) { note.textContent = "Kopiere die Videobeschreibung in das Beschreibungs-Feld — daraus lese ich die Zutaten."; return; }
-  if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
+
+  // Nichts da? Dann den Link jetzt selbst laden - ein Klick genügt.
+  if (!caption && url) {
+    note.textContent = "Lese den Link…";
+    const meta = await loadLinkIntoForm(url, pnote);
+    if (meta) caption = [meta.title, meta.description].filter(Boolean).join("\n");
+  }
+  if (!caption) { note.textContent = "Bitte einen Link einfügen oder die Beschreibung eintragen."; return; }
+
   note.textContent = "Erkenne Zutaten…";
   try {
     const result = await callExtractIngredients(caption);
