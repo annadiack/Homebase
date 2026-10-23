@@ -1170,7 +1170,8 @@ function populateImportDays() {
 }
 function resetImportForm() {
   currentImport = null;
-  ["importUrl", "importIngredients", "previewTitle"].forEach(id => document.getElementById(id).value = "");
+  ["importUrl", "importIngredients", "previewTitle", "importCaption"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  const th = document.getElementById("previewThumb"); if (th) { th.hidden = false; th.src = ""; }
   document.getElementById("platformNote").textContent = "";
   document.getElementById("importPreview").hidden = true;
   document.getElementById("caloriesNote").textContent = "";
@@ -1186,19 +1187,35 @@ document.getElementById("loadPreview").addEventListener("click", async () => {
   const note = document.getElementById("platformNote"), preview = document.getElementById("importPreview");
   if (!url) { note.textContent = "Bitte zuerst einen Link einfügen."; return; }
   const platform = detectPlatform(url);
+  const manualMode = (msg) => {
+    note.textContent = msg;
+    document.getElementById("previewThumb").hidden = true;
+    document.getElementById("previewTitle").value = document.getElementById("previewTitle").value || "";
+    document.getElementById("previewPlatform").textContent = platformLabel(platform);
+    preview.hidden = false;
+    currentImport = { platform, url, thumbnail: "" };
+    const t = document.getElementById("previewTitle");
+    if (t) { t.focus(); }
+  };
   if (platform === "instagram" || platform === "sonstige") {
-    note.textContent = platform === "instagram" ? "Instagram erlaubt keine automatische Vorschau — Titel bitte manuell." : "Unbekannte Plattform — Titel bitte manuell.";
-    preview.hidden = true; currentImport = { platform, url, thumbnail: "" }; return;
+    manualMode(platform === "instagram"
+      ? "Instagram erlaubt keine Vorschau — bitte Titel unten selbst eintragen."
+      : "Unbekannte Plattform — bitte Titel unten selbst eintragen.");
+    return;
   }
   note.textContent = "Lade Vorschau…";
   try {
     const data = await fetchOEmbed(url, platform);
-    document.getElementById("previewThumb").src = data.thumbnail_url || "";
+    const thumb = document.getElementById("previewThumb");
+    if (data.thumbnail_url) { thumb.src = data.thumbnail_url; thumb.hidden = false; } else { thumb.hidden = true; }
     document.getElementById("previewTitle").value = data.title || "";
     document.getElementById("previewPlatform").textContent = platformLabel(platform);
     preview.hidden = false; note.textContent = "Vorschau geladen.";
     currentImport = { platform, url, thumbnail: data.thumbnail_url || "" };
-  } catch (err) { note.textContent = "Vorschau nicht ladbar — Titel bitte manuell."; preview.hidden = true; currentImport = { platform, url, thumbnail: "" }; }
+  } catch (err) {
+    manualMode("TikTok/YouTube hat die Vorschau abgelehnt — Titel bitte unten eintragen. Für die Zutaten die Videobeschreibung ins Feld darunter kopieren.");
+    console.warn(err);
+  }
 });
 
 let lastEstimatedCalories = null;
@@ -1220,8 +1237,13 @@ document.getElementById("estimateCaloriesBtn").addEventListener("click", async (
 
 document.getElementById("autoExtractBtn").addEventListener("click", async () => {
   const note = document.getElementById("caloriesNote");
-  const caption = document.getElementById("previewTitle").value.trim() || document.getElementById("importIngredients").value.trim();
-  if (!caption) { note.textContent = "Bitte zuerst den Link laden (Vorschau) — das liefert die Beschreibung."; return; }
+  const capEl = document.getElementById("importCaption");
+  const caption = [
+    capEl ? capEl.value.trim() : "",
+    document.getElementById("previewTitle").value.trim(),
+    document.getElementById("importIngredients").value.trim()
+  ].filter(Boolean).join("\n");
+  if (!caption) { note.textContent = "Kopiere die Videobeschreibung in das Beschreibungs-Feld — daraus lese ich die Zutaten."; return; }
   if (!FUNCTIONS_BASE) { note.textContent = "Braucht eine Supabase-Verbindung."; return; }
   note.textContent = "Erkenne Zutaten…";
   try {
