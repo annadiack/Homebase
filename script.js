@@ -478,7 +478,11 @@ async function callExtractIngredients(text) {
     headers: { "Content-Type": "application/json", "apikey": cfg.SUPABASE_ANON_KEY, "Authorization": `Bearer ${cfg.SUPABASE_ANON_KEY}` },
     body: JSON.stringify({ text }),
   });
-  if (!res.ok) throw new Error("extract-ingredients " + res.status);
+  if (!res.ok) {
+    let detail = "";
+    try { const j = await res.json(); detail = j.error || ""; } catch (e) {}
+    throw new Error(detail || ("Serverfehler " + res.status));
+  }
   return res.json();
 }
 async function callSortItem(text, categories) {
@@ -1316,7 +1320,7 @@ document.getElementById("estimateCaloriesBtn").addEventListener("click", async (
     const totalEl = document.getElementById("recipeTotalCalories");
     totalEl.textContent = `Gesamt: ${result.total ?? 0} kcal`; totalEl.hidden = false;
     note.textContent = "Kalorien geschätzt.";
-  } catch (e) { note.textContent = "Fehlgeschlagen — prüfe ANTHROPIC_API_KEY in Supabase."; console.warn(e); }
+  } catch (e) { note.textContent = (e && e.message) ? e.message : "Fehlgeschlagen — bitte nochmal versuchen."; console.warn(e); }
 });
 
 document.getElementById("autoExtractBtn").addEventListener("click", async () => {
@@ -1352,7 +1356,7 @@ document.getElementById("autoExtractBtn").addEventListener("click", async () => 
     const totalEl = document.getElementById("recipeTotalCalories");
     totalEl.textContent = `Gesamt: ${result.total ?? 0} kcal`; totalEl.hidden = false;
     note.textContent = `${items.length} Zutaten erkannt.`;
-  } catch (e) { note.textContent = "Fehlgeschlagen — prüfe ANTHROPIC_API_KEY in Supabase."; console.warn(e); }
+  } catch (e) { note.textContent = (e && e.message) ? e.message : "Fehlgeschlagen — bitte nochmal versuchen."; console.warn(e); }
 });
 
 document.getElementById("saveImport").addEventListener("click", async () => {
@@ -1402,7 +1406,7 @@ document.getElementById("receiptFile").addEventListener("change", async e => {
     renderReceiptResults();
     note.textContent = currentReceiptItems.length ? "Zutaten erkannt — vor dem Speichern prüfen." : "Keine Artikel erkannt.";
     document.getElementById("saveReceiptItems").hidden = !currentReceiptItems.length;
-  } catch (err) { note.textContent = "Scan fehlgeschlagen — prüfe ANTHROPIC_API_KEY in Supabase."; console.warn(err); }
+  } catch (err) { note.textContent = (err && err.message) ? err.message : "Scan fehlgeschlagen."; console.warn(err); }
 });
 function renderReceiptResults() {
   const box = document.getElementById("receiptResults");
@@ -1473,7 +1477,7 @@ document.getElementById("saveReceiptItems").addEventListener("click", async () =
       lastSuggestions = result.recipes || [];
       note.textContent = lastSuggestions.length ? `${lastSuggestions.length} Vorschläge:` : "Keine Vorschläge gefunden.";
       render();
-    } catch (e) { note.textContent = "Fehlgeschlagen — prüfe ANTHROPIC_API_KEY in Supabase."; console.warn(e); }
+    } catch (e) { note.textContent = (e && e.message) ? e.message : "Fehlgeschlagen — bitte nochmal versuchen."; console.warn(e); }
     finally { btn.disabled = false; }
   };
   btn.addEventListener("click", run);
